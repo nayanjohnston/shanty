@@ -6,7 +6,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/gen2brain/go-mpv"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -20,26 +22,34 @@ type ShantyConfig struct {
 
 var config ShantyConfig
 
-// Die Slow - Health
-var songId = "CswcJyoHCNG9hsMuG8BMLm"
-var songUrl = ""
+var (
+	// Die Slow - Health
+	songId  = "CswcJyoHCNG9hsMuG8BMLm"
+	songUrl = ""
+)
 
-type mpvEventMsg int64
+type playerModel struct {
+	width       int
+	height      int
+	mpvPlayer   *mpv.Mpv
+	progressBar progress.Model
+}
+
+type mpvEventMsg *mpv.Event
 
 func pollMpv(m *mpv.Mpv) tea.Cmd {
 	return func() tea.Msg {
-		_ = m.WaitEvent(10000)
-		return mpvEventMsg(0)
+		return mpvEventMsg(m.WaitEvent(10000))
 	}
 }
 
-type playerModel struct {
-	mpvPlayer *mpv.Mpv
-}
-
 func initializePlayerModel(m *mpv.Mpv) playerModel {
+	prgs := progress.New(progress.WithDefaultGradient())
+	prgs.ShowPercentage = false
+
 	return playerModel{
-		mpvPlayer: m,
+		mpvPlayer:   m,
+		progressBar: prgs,
 	}
 }
 
@@ -49,18 +59,63 @@ func (p playerModel) Init() tea.Cmd {
 
 func (p playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		p.width = msg.Width
+		p.height = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
 			return p, tea.Quit
+		case " ":
+			p.mpvPlayer.Command([]string{"cycle", "pause"})
+		case "left", "h":
+			p.mpvPlayer.Command([]string{"seek", "-5", "relative"})
+		case "right", "l":
+			p.mpvPlayer.Command([]string{"seek", "5", "relative"})
+		case "up", "k":
+			p.mpvPlayer.Command([]string{"add", "volume", "5"})
+		case "down", "j":
+			p.mpvPlayer.Command([]string{"add", "volume", "-5"})
 		}
 	case mpvEventMsg:
+		var e mpv.Event = *msg
+
+		switch e.EventID {
+		case mpv.EventEnd:
+			if e.EndFile().Reason == mpv.EndFileEOF {
+				p.mpvPlayer.Command([]string{"loadfile", songUrl})
+			}
+		}
+
 		return p, pollMpv(p.mpvPlayer)
 	}
 	return p, nil
 }
 
-func (p playerModel) View() string {
+func (p playerModel) getLengthString() string {
+	s := ""
+
+	property, _ := p.mpvPlayer.GetProperty("duration", mpv.FormatInt64)
+	length, _ := property.(int64)
+
+	current_progress := time.Duration(length) * time.Second
+	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
+	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
+	hours := math.Floor(current_progress.Hours())
+
+	if hours > 0 {
+		s += fmt.Sprintf("%vh", hours)
+	}
+
+	if minutes > 0 {
+		s += fmt.Sprintf("%vm", minutes)
+	}
+
+	s += fmt.Sprintf("%02vs", seconds)
+	return s
+}
+
+func (p playerModel) getPositionString() string {
 	s := ""
 
 	property, _ := p.mpvPlayer.GetProperty("time-pos", mpv.FormatInt64)
@@ -72,16 +127,65 @@ func (p playerModel) View() string {
 	hours := math.Floor(current_progress.Hours())
 
 	if hours > 0 {
-		s += fmt.Sprintf("%vh ", hours)
+		s += fmt.Sprintf("%vh", hours)
 	}
 
 	if minutes > 0 {
-		s += fmt.Sprintf("%vm ", minutes)
+		s += fmt.Sprintf("%vm", minutes)
 	}
 
 	s += fmt.Sprintf("%02vs", seconds)
 
 	return s
+}
+
+func (p playerModel) getPausedString() string {
+	s := ""
+
+	property, _ := p.mpvPlayer.GetProperty("pause", mpv.FormatFlag)
+	paused, _ := property.(bool)
+
+	if paused {
+		s = "||"
+	} else {
+		s = "|>"
+	}
+
+	return s
+}
+
+func (p playerModel) getVolumeString() string {
+	s := ""
+
+	property, _ := p.mpvPlayer.GetProperty("volume", mpv.FormatInt64)
+	volume, _ := property.(int64)
+
+	s = fmt.Sprintf("%v%%", volume)
+
+	return s
+}
+
+func (p playerModel) View() string {
+	property, _ := p.mpvPlayer.GetProperty("percent-pos", mpv.FormatDouble)
+	percentPos, _ := property.(float64)
+
+	leftText := " " + p.getPositionString()
+	centerText := p.getPausedString() + " - " + p.getVolumeString()
+	rightText := p.getLengthString() + " "
+
+	p.progressBar.Width = p.width
+
+	return lipgloss.Place(
+		p.width,
+		p.height,
+		lipgloss.Center,
+		lipgloss.Bottom,
+		lipgloss.JoinVertical(
+			lipgloss.Left,
+			leftText+" "+centerText+" "+rightText,
+			p.progressBar.ViewAs(percentPos/100.0),
+		),
+	)
 }
 
 func readConfig() error {
@@ -98,40 +202,10 @@ func readConfig() error {
 	return nil
 }
 
-func createMPV() (*mpv.Mpv, error) {
-	// Create MPV player
-	m := mpv.New()
-
-	// Observe time changes
-	_ = m.ObserveProperty(0, "time-pos", mpv.FormatDouble)
-
-	// Disable video (make sure by doing all 3 lmao)
-	_ = m.SetOption("no-video", mpv.FormatFlag, true)
-	_ = m.SetOptionString("vo", "null")
-	_ = m.SetOptionString("vid", "")
-
-	// Init player and return
-	err := m.Initialize()
-
-	if err != nil {
-		return nil, err
-	}
-
-	return m, nil
-}
-
 func main() {
-	// Setup bubbletea logging.
-	f, err := tea.LogToFile("debug.log", "debug")
-
-	if err != nil {
-		panic(err)
-	}
-
-	defer f.Close()
-
+	fmt.Println("Reading config...")
 	// Read Config
-	err = readConfig()
+	err := readConfig()
 
 	if err != nil {
 		panic(err)
@@ -140,12 +214,25 @@ func main() {
 	// Create song url
 	songUrl = config.ServerUrl + "/rest/stream.view?u=" + config.ServerUser + "&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&id=" + songId
 
+	fmt.Println("Initializing MPV...")
+
 	// Create MPV player
 	m, err := createMPV()
 
 	if err != nil {
 		panic(err)
 	}
+
+	fmt.Println("Setting up TUI...")
+
+	// Setup bubbletea logging.
+	f, err := tea.LogToFile("debug.log", "debug")
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
 
 	m.Command([]string{"loadfile", songUrl})
 
