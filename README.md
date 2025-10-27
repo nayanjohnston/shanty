@@ -5,10 +5,10 @@
 Currently configuration is done via a "config.toml" in the directory the program is run.
 ### Config Options
 
-| Option | Description |
-| --- | --- |
-| serverUrl | The URL/IP that points to the navidrome server. |
-| serverUser | Username of Navidrome user. |
-| serverPassword | Password of Navidrome user.|
+| Option | Type | Description |
+| --- | --- | --- |
+| serverUrl | String | The URL/IP that points to the navidrome server. |
+| serverUser | String | Username of Navidrome user. |
+| serverPassword | String | Password of Navidrome user.|
 
 

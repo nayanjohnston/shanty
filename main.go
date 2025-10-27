@@ -1,9 +1,9 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gen2brain/go-mpv"
 	"github.com/pelletier/go-toml/v2"
 )
@@ -20,6 +20,35 @@ var config ShantyConfig
 // Die Slow - Health
 var songId = "CswcJyoHCNG9hsMuG8BMLm"
 var songUrl = ""
+
+type playerModel struct {
+	mpvPlayer *mpv.Mpv
+}
+
+func initializePlayerModel(m *mpv.Mpv) playerModel {
+	return playerModel{
+		mpvPlayer: m,
+	}
+}
+
+func (p playerModel) Init() tea.Cmd {
+	return nil
+}
+
+func (p playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "ctrl+c":
+			return p, tea.Quit
+		}
+	}
+	return p, nil
+}
+
+func (p playerModel) View() string {
+	return "Hello, world! :)"
+}
 
 func readConfig() error {
 	// Read config data
@@ -58,7 +87,17 @@ func createMPV() (*mpv.Mpv, error) {
 }
 
 func main() {
-	err := readConfig()
+	// Setup bubbletea logging.
+	f, err := tea.LogToFile("debug.log", "debug")
+
+	if err != nil {
+		panic(err)
+	}
+
+	defer f.Close()
+
+	// Read Config
+	err = readConfig()
 
 	if err != nil {
 		panic(err)
@@ -74,7 +113,8 @@ func main() {
 		panic(err)
 	}
 
-	m.Command([]string{"loadfile", songUrl})
-
-	fmt.Scanf("h")
+	p := tea.NewProgram(initializePlayerModel(m), tea.WithAltScreen())
+	if _, err = p.Run(); err != nil {
+		panic(err)
+	}
 }
