@@ -1,9 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"math"
+	"net/http"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
@@ -23,8 +27,12 @@ type ShantyConfig struct {
 var config ShantyConfig
 
 var (
+	// Motherfucker, I Am Both_ “Amen” and “Hallelujah”… - Shearling
+	songId = "RuQ8j6ArKmWbVSbipoxcO1"
+	// Where Losers Go to Die - Intercourse
+	//songId = "4GUzBDhXTurVnQmcM2DvOU"
 	// Die Slow - Health
-	songId  = "CswcJyoHCNG9hsMuG8BMLm"
+	//songId  = "CswcJyoHCNG9hsMuG8BMLm"
 	songUrl = ""
 )
 
@@ -104,14 +112,12 @@ func (p playerModel) getLengthString() string {
 	hours := math.Floor(current_progress.Hours())
 
 	if hours > 0 {
-		s += fmt.Sprintf("%vh", hours)
+		s += fmt.Sprintf("%v:", hours)
 	}
 
-	if minutes > 0 {
-		s += fmt.Sprintf("%vm", minutes)
-	}
+	s += fmt.Sprintf("%02v:", minutes)
+	s += fmt.Sprintf("%02v", seconds)
 
-	s += fmt.Sprintf("%02vs", seconds)
 	return s
 }
 
@@ -127,14 +133,11 @@ func (p playerModel) getPositionString() string {
 	hours := math.Floor(current_progress.Hours())
 
 	if hours > 0 {
-		s += fmt.Sprintf("%vh", hours)
+		s += fmt.Sprintf("%v:", hours)
 	}
 
-	if minutes > 0 {
-		s += fmt.Sprintf("%vm", minutes)
-	}
-
-	s += fmt.Sprintf("%02vs", seconds)
+	s += fmt.Sprintf("%02v:", minutes)
+	s += fmt.Sprintf("%02v", seconds)
 
 	return s
 }
@@ -169,11 +172,14 @@ func (p playerModel) View() string {
 	property, _ := p.mpvPlayer.GetProperty("percent-pos", mpv.FormatDouble)
 	percentPos, _ := property.(float64)
 
-	leftText := " " + p.getPositionString()
+	leftText := p.getPositionString()
 	centerText := p.getPausedString() + " - " + p.getVolumeString()
-	rightText := p.getLengthString() + " "
+	rightText := p.getLengthString()
 
-	p.progressBar.Width = p.width
+	leftRender := lipgloss.NewStyle().Align(lipgloss.Center).Width(11).Render(leftText)
+	rightRender := lipgloss.NewStyle().Align(lipgloss.Center).Width(11).Render(rightText)
+
+	p.progressBar.Width = p.width - lipgloss.Width(leftRender) - lipgloss.Width(rightRender)
 
 	return lipgloss.Place(
 		p.width,
@@ -181,9 +187,13 @@ func (p playerModel) View() string {
 		lipgloss.Center,
 		lipgloss.Bottom,
 		lipgloss.JoinVertical(
-			lipgloss.Left,
-			leftText+" "+centerText+" "+rightText,
-			p.progressBar.ViewAs(percentPos/100.0),
+			lipgloss.Center,
+			centerText,
+			lipgloss.JoinHorizontal(lipgloss.Center,
+				leftRender,
+				p.progressBar.ViewAs(percentPos/100.0),
+				rightRender,
+			),
 		),
 	)
 }
@@ -202,8 +212,43 @@ func readConfig() error {
 	return nil
 }
 
+func printAlbumList(offset int64) string {
+	s := ""
+
+	offset = offset * 16
+
+	result, err := http.Get(config.ServerUrl + "/rest/getAlbumList?u=" +
+		config.ServerUser + "&p=" + config.ServerPassword +
+		"&v=1.12.0&c=shanty&f=json&type=alphabeticalByArtist&size=16&offset=" +
+		strconv.FormatInt(offset, 10))
+
+	body, _ := io.ReadAll(result.Body)
+
+	if err != nil {
+		panic(err)
+	}
+
+	var list any
+
+	json.Unmarshal([]byte(body), &list)
+
+	subsonicResponse := list.(map[string]any)["subsonic-response"]
+	albumListContainer := subsonicResponse.(map[string]any)["albumList"]
+	albumList := albumListContainer.(map[string]any)["album"].([]any)
+
+	for index, element := range albumList {
+		s += element.(map[string]any)["title"].(string)
+		if index != 15 {
+			s += "\n"
+		}
+	}
+
+	return s
+}
+
 func main() {
 	fmt.Println("Reading config...")
+
 	// Read Config
 	err := readConfig()
 
@@ -235,6 +280,8 @@ func main() {
 	defer f.Close()
 
 	m.Command([]string{"loadfile", songUrl})
+
+	fmt.Println(printAlbumList(0))
 
 	p := tea.NewProgram(initializePlayerModel(m), tea.WithAltScreen())
 	if _, err = p.Run(); err != nil {
