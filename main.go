@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"math"
 	"os"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/gen2brain/go-mpv"
@@ -21,6 +24,15 @@ var config ShantyConfig
 var songId = "CswcJyoHCNG9hsMuG8BMLm"
 var songUrl = ""
 
+type mpvEventMsg int64
+
+func pollMpv(m *mpv.Mpv) tea.Cmd {
+	return func() tea.Msg {
+		_ = m.WaitEvent(10000)
+		return mpvEventMsg(0)
+	}
+}
+
 type playerModel struct {
 	mpvPlayer *mpv.Mpv
 }
@@ -32,7 +44,7 @@ func initializePlayerModel(m *mpv.Mpv) playerModel {
 }
 
 func (p playerModel) Init() tea.Cmd {
-	return nil
+	return pollMpv(p.mpvPlayer)
 }
 
 func (p playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -42,12 +54,34 @@ func (p playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return p, tea.Quit
 		}
+	case mpvEventMsg:
+		return p, pollMpv(p.mpvPlayer)
 	}
 	return p, nil
 }
 
 func (p playerModel) View() string {
-	return "Hello, world! :)"
+	s := ""
+
+	property, _ := p.mpvPlayer.GetProperty("time-pos", mpv.FormatInt64)
+	progress, _ := property.(int64)
+
+	current_progress := time.Duration(progress) * time.Second
+	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
+	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
+	hours := math.Floor(current_progress.Hours())
+
+	if hours > 0 {
+		s += fmt.Sprintf("%vh ", hours)
+	}
+
+	if minutes > 0 {
+		s += fmt.Sprintf("%vm ", minutes)
+	}
+
+	s += fmt.Sprintf("%02vs", seconds)
+
+	return s
 }
 
 func readConfig() error {
@@ -112,6 +146,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	m.Command([]string{"loadfile", songUrl})
 
 	p := tea.NewProgram(initializePlayerModel(m), tea.WithAltScreen())
 	if _, err = p.Run(); err != nil {
