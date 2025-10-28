@@ -1,7 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"io"
 	"log"
+	"net/http"
 
 	"github.com/gen2brain/go-mpv"
 )
@@ -12,10 +15,10 @@ type Player struct {
 }
 
 type Song struct {
-	url  string
-	name string
-	id   string
-	art  string
+	url   string
+	title string
+	id    string
+	art   []string
 }
 
 type Playlist struct {
@@ -61,14 +64,47 @@ func createMPV() (*mpv.Mpv, error) {
 }
 
 func (p Player) queueSong(songId string) {
+	// Get URL for song information.
+	infoUrl := config.ServerUrl + "/rest/getSong?u=" + config.ServerUser +
+		"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + songId
+
+	// Get http response.
+	result, err := http.Get(infoUrl)
+	if err != nil {
+		panic(err)
+	}
+
+	// Read http body.
+	body, err := io.ReadAll(result.Body)
+	if err != nil {
+		panic(err)
+	}
+
+	// Parse http resonse as json.
+	var jsonResponse any
+	json.Unmarshal([]byte(body), &jsonResponse)
+
+	// Get the song information from json
+	songInfo, ok := jsonResponse.(map[string]any)["subsonic-response"].(map[string]any)["song"].(map[string]any)
+	if ok == false {
+		return
+	}
+
+	// Get title
+	var songTitle string = songInfo["title"].(string)
+
+	songArt, err := imageArray(songInfo["coverArt"].(string))
+
 	// Create the song's URL.
 	songUrl := config.ServerUrl + "/rest/stream.view?u=" + config.ServerUser +
 		"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&id=" + songId
 
 	// Append it to the playlist.
 	p.pl.songs = append(p.pl.songs, Song{
-		url: songUrl,
-		id:  songId,
+		url:   songUrl,
+		id:    songId,
+		title: songTitle,
+		art:   songArt,
 	})
 }
 
