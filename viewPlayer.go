@@ -12,21 +12,6 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
-// var gridRegularStyle = lipgloss.NewStyle().
-// 	BorderStyle(lipgloss.NormalBorder()).
-// 	Height(12)
-//
-// var albumArtStyle = lipgloss.NewStyle().
-// 	MaxWidth(20).
-// 	Align(lipgloss.Center)
-//
-// var albumTitleStyle = lipgloss.NewStyle().
-// 	Width(22).
-// 	MaxHeight(3).
-// 	Padding(0, 1, 0, 1).
-// 	AlignHorizontal(lipgloss.Center).
-// 	AlignVertical(lipgloss.Center)
-
 var playerStyle = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderTop(true)
@@ -39,18 +24,12 @@ var infoStyle = lipgloss.NewStyle().
 	Width(22)
 
 type playerModel struct {
+	progressBar progress.Model
 	width       int
 	height      int
-	progressBar progress.Model
 }
 
 type mpvEventMsg *mpv.Event
-
-func pollMpv(m *mpv.Mpv) tea.Cmd {
-	return func() tea.Msg {
-		return mpvEventMsg(m.WaitEvent(10000))
-	}
-}
 
 func initializePlayerModel() playerModel {
 	prgs := progress.New(progress.WithDefaultGradient())
@@ -62,18 +41,15 @@ func initializePlayerModel() playerModel {
 }
 
 func (p playerModel) Init() tea.Cmd {
-	return pollMpv(player.mp)
+	return nil
 }
 
 func (p playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		p.width = msg.Width
-		p.height = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "ctrl+c":
-			return p, tea.Quit
 		case " ":
 			player.mp.Command([]string{"cycle", "pause"})
 		case "ctrl+h":
@@ -89,6 +65,7 @@ func (p playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+j":
 			player.mp.Command([]string{"add", "volume", "-5"})
 		}
+
 	case mpvEventMsg:
 		var e mpv.Event = *msg
 
@@ -99,10 +76,10 @@ func (p playerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				player.nextSong()
 			}
 		}
-
-		return p, pollMpv(player.mp)
+		cmds = append(cmds, pollMpv(player.mp))
 	}
-	return p, nil
+
+	return p, tea.Batch(cmds...)
 }
 
 func (p playerModel) getLengthString() string {
@@ -173,38 +150,6 @@ func (p playerModel) getVolumeString() string {
 	return s
 }
 
-// func (p playerModel) getAlbumGrid() string {
-// 	var albumPage [2][3]string
-//
-// 	for yPos, _ := range albumPage {
-// 		for xPos, _ := range albumPage[yPos] {
-// 			if xPos+(yPos*3) < len(albumList) {
-// 				thisAlbum := albumList[xPos+(yPos*3)]
-//
-// 				albumArt := drawImage(thisAlbum.image)
-//
-// 				albumPage[yPos][xPos] = lipgloss.JoinVertical(lipgloss.Center,
-// 					albumArtStyle.Render(albumArt),
-// 					albumTitleStyle.Render(thisAlbum.title),
-// 				)
-// 			}
-// 		}
-// 	}
-//
-// 	return lipgloss.JoinVertical(lipgloss.Top,
-// 		lipgloss.JoinHorizontal(lipgloss.Left,
-// 			gridRegularStyle.Render(albumPage[0][0]),
-// 			gridRegularStyle.Render(albumPage[0][1]),
-// 			gridRegularStyle.Render(albumPage[0][2]),
-// 		),
-// 		lipgloss.JoinHorizontal(lipgloss.Left,
-// 			gridRegularStyle.Render(albumPage[1][0]),
-// 			gridRegularStyle.Render(albumPage[1][1]),
-// 			gridRegularStyle.Render(albumPage[1][2]),
-// 		),
-// 	)
-// }
-
 func (p playerModel) View() string {
 	// Get played percentage.
 	property, _ := player.mp.GetProperty("percent-pos", mpv.FormatDouble)
@@ -261,20 +206,22 @@ func (p playerModel) View() string {
 		infoRightRender,
 	)
 
+	output := playerStyle.
+		Render(
+			lipgloss.JoinVertical(
+				lipgloss.Center,
+
+				informationRender,
+				progressRender,
+			),
+		)
+
 	// Place player at the bottom of the terminal.
 	return lipgloss.Place(
 		p.width,
-		p.height,
+		lipgloss.Height(output),
 		lipgloss.Center,
 		lipgloss.Bottom,
-		playerStyle.
-			Render(
-				lipgloss.JoinVertical(
-					lipgloss.Center,
-
-					informationRender,
-					progressRender,
-				),
-			),
+		output,
 	)
 }
