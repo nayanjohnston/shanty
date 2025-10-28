@@ -20,38 +20,43 @@ var (
 	songUrl = ""
 )
 
-func printAlbumList(offset int64) string {
+func printAlbumList() string {
 	s := ""
+	keepGoing := true
+	offset := 0
 
-	offset = offset * 16
+	for keepGoing {
+		result, err := http.Get(config.ServerUrl + "/rest/getAlbumList?u=" +
+			config.ServerUser + "&p=" + config.ServerPassword +
+			"&v=1.12.0&c=shanty&f=json&type=alphabeticalByArtist&size=100&offset=" +
+			strconv.FormatInt(int64(offset), 10))
 
-	result, err := http.Get(config.ServerUrl + "/rest/getAlbumList?u=" +
-		config.ServerUser + "&p=" + config.ServerPassword +
-		"&v=1.12.0&c=shanty&f=json&type=alphabeticalByArtist&size=16&offset=" +
-		strconv.FormatInt(offset, 10))
-
-	body, _ := io.ReadAll(result.Body)
-
-	if err != nil {
-		panic(err)
-	}
-
-	var list any
-
-	json.Unmarshal([]byte(body), &list)
-
-	subsonicResponse := list.(map[string]any)["subsonic-response"]
-	albumListContainer := subsonicResponse.(map[string]any)["albumList"]
-	albumList := albumListContainer.(map[string]any)["album"].([]any)
-
-	for index, element := range albumList {
-		s += element.(map[string]any)["title"].(string)
-		if index != 15 {
-			s += "\n"
+		if err != nil {
+			panic(err)
 		}
+
+		body, _ := io.ReadAll(result.Body)
+
+		var list any
+		json.Unmarshal([]byte(body), &list)
+
+		albumList, ok := list.(map[string]any)["subsonic-response"].(map[string]any)["albumList"].(map[string]any)["album"].([]any)
+
+		if ok == false {
+			keepGoing = false
+			continue
+		}
+
+		for _, element := range albumList {
+			s += element.(map[string]any)["title"].(string) + " | " +
+				element.(map[string]any)["id"].(string) + "\n"
+		}
+
+		offset += 100
 	}
 
 	return s
+
 }
 
 func main() {
@@ -63,6 +68,34 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	imar := imageArray("al-0Un3SBpJkfJEx0bk1zxBjQ_68863ba3")
+
+	fmt.Println("----------------------")
+
+	for index, row := range imar {
+		if index == len(imar)-1 {
+			continue
+		}
+
+		fmt.Println("|" + row + "|")
+	}
+
+	fmt.Println("----------------------")
+
+	imar = imageArray("al-6bq2WyuPx4OiRggyHSpFZj_6884f0bc")
+
+	fmt.Println("----------------------")
+
+	for index, row := range imar {
+		if index == len(imar)-1 {
+			continue
+		}
+
+		fmt.Println("|" + row + "|")
+	}
+
+	fmt.Println("----------------------")
 
 	// Create song url
 	songUrl = config.ServerUrl + "/rest/stream.view?u=" + config.ServerUser + "&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&id=" + songId
@@ -89,7 +122,7 @@ func main() {
 
 	m.Command([]string{"loadfile", songUrl})
 
-	fmt.Println(printAlbumList(0))
+	fmt.Println(printAlbumList())
 
 	p := tea.NewProgram(initializePlayerModel(m), tea.WithAltScreen())
 	if _, err = p.Run(); err != nil {
