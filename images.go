@@ -1,23 +1,59 @@
 package main
 
 import (
-	"bytes"
+	"io"
+	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 )
 
-func imageArray(imageId string) []string {
-	var b bytes.Buffer
+func imageArray(imageId string) ([]string, error) {
+	imageFile := "./.tmp/" + imageId + ".jpg"
 
-	c1 := exec.Command("curl", config.ServerUrl+"/rest/getCoverArt?u="+config.ServerUser+"&p="+config.ServerPassword+"&v=1.12.0&c=shanty&id="+imageId)
+	if _, err := os.Stat(imageFile); err != nil {
+		imageUrl := config.ServerUrl + "/rest/getCoverArt?u=" + config.ServerUser +
+			"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&size=100&id=" + imageId
 
-	c2 := exec.Command("chafa", "-s", "20x20", "-f", "symbols")
+		imageResponse, err := http.Get(imageUrl)
+		if err != nil {
+			return nil, err
+		}
+		defer imageResponse.Body.Close()
 
-	c2.Stdin, _ = c1.StdoutPipe()
-	c2.Stdout = &b
-	_ = c2.Start()
-	_ = c1.Run()
-	_ = c2.Wait()
+		file, err := os.Create(imageFile)
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
 
-	return strings.Split(b.String(), "\n")
+		_, err = io.Copy(file, imageResponse.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	chafaCommand, err := exec.Command("chafa", "-s", "20x20", "-f", "symbols", imageFile).Output()
+
+	chafaOutput := string(chafaCommand)
+
+	if err != nil {
+		return nil, err
+	}
+
+	splitString := strings.Split(chafaOutput, "\n")
+	return splitString[:len(splitString)-1], nil
+}
+
+func drawImage(image []string) string {
+	s := ""
+
+	for index, row := range image {
+		s += row
+		if index != len(image)-1 {
+			s += "\n"
+		}
+	}
+
+	return s
 }

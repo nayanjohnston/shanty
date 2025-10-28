@@ -33,3 +33,5 @@ go.work.sum
 
 # Configuration File
 config.toml
+debug.log
+.tmp/

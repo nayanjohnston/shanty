@@ -1,67 +1,54 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"net/http"
-	"strconv"
-
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var (
-	// Motherfucker, I Am Both_ “Amen” and “Hallelujah”… - Shearling
-	songId = "RuQ8j6ArKmWbVSbipoxcO1"
-	// Where Losers Go to Die - Intercourse
-	//songId = "4GUzBDhXTurVnQmcM2DvOU"
-	// Die Slow - Health
-	//songId  = "CswcJyoHCNG9hsMuG8BMLm"
-	songUrl = ""
-)
+// type Album {
+// 	id    string
+// 	title string
+// 	image []string
+// }
+//
+// var albumList []Album
 
-func printAlbumList() string {
-	s := ""
-	keepGoing := true
-	offset := 0
+// func getAlbumPage(page int64) {
+// 	offset := 0 + (page * 6)
+//
+// 	result, err := http.Get(config.ServerUrl + "/rest/getAlbumList?u=" +
+// 		config.ServerUser + "&p=" + config.ServerPassword +
+// 		"&v=1.12.0&c=shanty&f=json&type=alphabeticalByArtist&size=6&offset=" +
+// 		strconv.FormatInt(int64(offset), 10))
+//
+// 	if err != nil {
+// 		panic(err)
+// 	}
+//
+// 	body, _ := io.ReadAll(result.Body)
+//
+// 	var list any
+// 	json.Unmarshal([]byte(body), &list)
+//
+// 	al, _ := list.(map[string]any)["subsonic-response"].(map[string]any)["albumList"].(map[string]any)["album"].([]any)
+//
+// 	for _, element := range al {
+// 		albumImage, err := imageArray(element.(map[string]any)["coverArt"].(string))
+//
+// 		if err != nil {
+// 			panic(err)
+// 		}
+//
+// 		albumList = append(albumList, Album{
+// 			title: element.(map[string]any)["title"].(string),
+// 			id:    element.(map[string]any)["id"].(string),
+// 			image: albumImage,
+// 		})
+// 	}
+// }
 
-	for keepGoing {
-		result, err := http.Get(config.ServerUrl + "/rest/getAlbumList?u=" +
-			config.ServerUser + "&p=" + config.ServerPassword +
-			"&v=1.12.0&c=shanty&f=json&type=alphabeticalByArtist&size=100&offset=" +
-			strconv.FormatInt(int64(offset), 10))
-
-		if err != nil {
-			panic(err)
-		}
-
-		body, _ := io.ReadAll(result.Body)
-
-		var list any
-		json.Unmarshal([]byte(body), &list)
-
-		albumList, ok := list.(map[string]any)["subsonic-response"].(map[string]any)["albumList"].(map[string]any)["album"].([]any)
-
-		if ok == false {
-			keepGoing = false
-			continue
-		}
-
-		for _, element := range albumList {
-			s += element.(map[string]any)["title"].(string) + " | " +
-				element.(map[string]any)["id"].(string) + "\n"
-		}
-
-		offset += 100
-	}
-
-	return s
-
-}
+var player Player
 
 func main() {
-	fmt.Println("Reading config...")
-
 	// Read Config
 	err := readConfig()
 
@@ -69,47 +56,10 @@ func main() {
 		panic(err)
 	}
 
-	imar := imageArray("al-0Un3SBpJkfJEx0bk1zxBjQ_68863ba3")
+	// Create Player
+	player = createPlayer()
 
-	fmt.Println("----------------------")
-
-	for index, row := range imar {
-		if index == len(imar)-1 {
-			continue
-		}
-
-		fmt.Println("|" + row + "|")
-	}
-
-	fmt.Println("----------------------")
-
-	imar = imageArray("al-6bq2WyuPx4OiRggyHSpFZj_6884f0bc")
-
-	fmt.Println("----------------------")
-
-	for index, row := range imar {
-		if index == len(imar)-1 {
-			continue
-		}
-
-		fmt.Println("|" + row + "|")
-	}
-
-	fmt.Println("----------------------")
-
-	// Create song url
-	songUrl = config.ServerUrl + "/rest/stream.view?u=" + config.ServerUser + "&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&id=" + songId
-
-	fmt.Println("Initializing MPV...")
-
-	// Create MPV player
-	m, err := createMPV()
-
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Setting up TUI...")
+	// getAlbumPage(19)
 
 	// Setup bubbletea logging.
 	f, err := tea.LogToFile("debug.log", "debug")
@@ -120,11 +70,16 @@ func main() {
 
 	defer f.Close()
 
-	m.Command([]string{"loadfile", songUrl})
+	// Die Slow - Health
+	player.queueSong("CswcJyoHCNG9hsMuG8BMLm")
+	// Where Losers Go to Die - Intercourse
+	player.queueSong("4GUzBDhXTurVnQmcM2DvOU")
+	// Motherfucker, I Am Both_ “Amen” and “Hallelujah”… - Shearling
+	player.queueSong("RuQ8j6ArKmWbVSbipoxcO1")
 
-	fmt.Println(printAlbumList())
+	player.loadSong(false)
 
-	p := tea.NewProgram(initializePlayerModel(m), tea.WithAltScreen())
+	p := tea.NewProgram(initializePlayerModel(), tea.WithAltScreen())
 	if _, err = p.Run(); err != nil {
 		panic(err)
 	}
