@@ -6,62 +6,91 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
-type mainModel struct {
-	pModel tea.Model
-	width  int
-	height int
+type focusedModel int
+
+const (
+	focusPlayer focusedModel = iota
+	focusLibrary
+)
+
+type modelMain struct {
+	modelLibrary  tea.Model
+	modelControls tea.Model
+	focus         focusedModel
 }
 
-func pollMpv(m *mpv.Mpv) tea.Cmd {
+func awaitMpvEvent(m *mpv.Mpv) tea.Cmd {
 	return func() tea.Msg {
-		return mpvEventMsg(m.WaitEvent(10000))
+		return msgMpvEvent(m.WaitEvent(10000))
 	}
 }
 
-func (m mainModel) Init() tea.Cmd {
+func (m modelMain) Init() tea.Cmd {
 	var cmds []tea.Cmd
 
-	cmds = append(cmds, pollMpv(player.mp))
+	m.ChangeFocus(focusPlayer)
+
+	cmds = append(cmds, awaitMpvEvent(objectPlayer.mp))
 
 	return tea.Batch(cmds...)
 }
 
-func (m mainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m modelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-
-		if pM, ok := m.pModel.(playerModel); ok {
-			pM.width = m.width
-			pM.height = m.height
-			m.pModel = pM
-		}
+		terminalWidth = msg.Width
+		terminalHeight = msg.Height
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
+		case "J":
+			m.ChangeFocus(focusPlayer)
+		case "K":
+			m.ChangeFocus(focusLibrary)
 		}
 
-		m.pModel, cmd = m.pModel.Update(msg)
-		cmds = append(cmds, cmd)
+		switch m.focus {
+		case focusPlayer:
+			m.modelControls, cmd = m.modelControls.Update(msg)
+			cmds = append(cmds, cmd)
+		case focusLibrary:
+			break
+		}
 
-	case mpvEventMsg:
-		m.pModel, cmd = m.pModel.Update(msg)
+	case msgMpvEvent:
+		m.modelControls, cmd = m.modelControls.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
-func (m mainModel) View() string {
-	s := lipgloss.JoinVertical(
-		lipgloss.Center,
-		"Some test text, just to see how this works!",
-		m.pModel.View(),
+func (m modelMain) ChangeFocus(newFocus focusedModel) {
+	m.focus = newFocus
+
+	if m.focus == focusPlayer {
+		if pM, ok := m.modelControls.(modelControls); ok {
+			pM.isFocused = true
+			m.modelControls = pM
+		}
+	}
+}
+
+func (m modelMain) View() string {
+	playerRender := m.modelControls.View()
+
+	s := lipgloss.NewStyle().Height(terminalHeight).Render(
+		lipgloss.JoinVertical(
+			lipgloss.Center,
+			lipgloss.NewStyle().
+				Height(terminalHeight-lipgloss.Height(playerRender)).
+				Render("This is a funny test."),
+			playerRender,
+		),
 	)
 	return s
 }

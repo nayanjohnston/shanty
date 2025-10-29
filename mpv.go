@@ -9,7 +9,7 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
-type Player struct {
+type PlayerManager struct {
 	mp *mpv.Mpv
 	pl *Playlist
 }
@@ -26,14 +26,14 @@ type Playlist struct {
 	index int
 }
 
-func createPlayer() Player {
-	m, err := createMPV()
+func createPlayer() PlayerManager {
+	m, err := createMpv()
 
 	if err != nil {
 		panic(err)
 	}
 
-	return Player{
+	return PlayerManager{
 		mp: m,
 		pl: &Playlist{
 			index: 0,
@@ -41,7 +41,7 @@ func createPlayer() Player {
 	}
 }
 
-func createMPV() (*mpv.Mpv, error) {
+func createMpv() (*mpv.Mpv, error) {
 	// Create MPV player
 	m := mpv.New()
 
@@ -63,7 +63,7 @@ func createMPV() (*mpv.Mpv, error) {
 	return m, nil
 }
 
-func (p Player) queueSong(songId string) {
+func (p PlayerManager) queueSong(songId string) {
 	// Get URL for song information.
 	infoUrl := config.ServerUrl + "/rest/getSong?u=" + config.ServerUser +
 		"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + songId
@@ -108,7 +108,7 @@ func (p Player) queueSong(songId string) {
 	})
 }
 
-func (p Player) loadSong(play bool) {
+func (p PlayerManager) loadSong(play bool) {
 	// Check if we're in the range of the current playlist...
 	if p.pl.index < 0 {
 		return
@@ -128,7 +128,7 @@ func (p Player) loadSong(play bool) {
 	p.mp.SetProperty("pause", mpv.FormatFlag, !play)
 }
 
-func (p Player) nextSong() {
+func (p PlayerManager) nextSong() {
 	// If we're the last song in the playlist, go to the first song and pause.
 	if p.pl.index >= len(p.pl.songs)-1 {
 		p.pl.index = 0
@@ -145,7 +145,7 @@ func (p Player) nextSong() {
 	log.Printf("Next: Song %v", p.pl.index)
 }
 
-func (p Player) prevSong() {
+func (p PlayerManager) prevSong() {
 	// Check if we are near the start of the current song...
 	property, _ := p.mp.GetProperty("time-pos", mpv.FormatInt64)
 	progress, _ := property.(int64)

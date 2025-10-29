@@ -4,7 +4,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var player Player
+var objectPlayer PlayerManager
+
+var (
+	terminalWidth  int
+	terminalHeight int
+)
 
 func main() {
 	// Read Config
@@ -15,7 +20,7 @@ func main() {
 	}
 
 	// Create Player
-	player = createPlayer()
+	objectPlayer = createPlayer()
 
 	// getAlbumPage(19)
 
@@ -29,17 +34,17 @@ func main() {
 	defer f.Close()
 
 	// Die Slow - Health
-	player.queueSong("CswcJyoHCNG9hsMuG8BMLm")
+	objectPlayer.queueSong("CswcJyoHCNG9hsMuG8BMLm")
 	// Where Losers Go to Die - Intercourse
-	player.queueSong("4GUzBDhXTurVnQmcM2DvOU")
+	objectPlayer.queueSong("4GUzBDhXTurVnQmcM2DvOU")
 	// Motherfucker, I Am Both_ “Amen” and “Hallelujah”… - Shearling
-	player.queueSong("RuQ8j6ArKmWbVSbipoxcO1")
+	objectPlayer.queueSong("RuQ8j6ArKmWbVSbipoxcO1")
 
-	player.loadSong(false)
+	objectPlayer.loadSong(false)
 
 	p := tea.NewProgram(
-		mainModel{
-			pModel: initializePlayerModel(),
+		modelMain{
+			modelControls: initializeModelControls(),
 		},
 		tea.WithAltScreen(),
 	)
