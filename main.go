@@ -44,12 +44,15 @@ func main() {
 	objectPlayer.queueSong("4GUzBDhXTurVnQmcM2DvOU")
 	// Motherfucker, I Am Both_ “Amen” and “Hallelujah”… - Shearling
 	objectPlayer.queueSong("RuQ8j6ArKmWbVSbipoxcO1")
+	// Shame - Chat Pile
+	objectPlayer.queueSong("lBAiNj6W8XhQos1hwWWPv1")
 
 	objectPlayer.loadSong(false)
 
 	p := tea.NewProgram(
 		ModelMain{
 			modelControls: initializeModelControls(),
+			modelLibrary:  initializeModelLibrary(),
 		},
 		tea.WithAltScreen(),
 	)

@@ -12,6 +12,7 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
+// Styles
 var styleOutputUnfocused = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderTop(true)
@@ -58,19 +59,19 @@ func (p ModelControls) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case " ":
-			objectPlayer.mp.Command([]string{"cycle", "pause"})
-		case "ctrl+h":
-			objectPlayer.mp.Command([]string{"seek", "-5", "relative"})
-		case "ctrl+l":
-			objectPlayer.mp.Command([]string{"seek", "5", "relative"})
-		case "ctrl+p":
+			objectPlayer.mpv.Command([]string{"cycle", "pause"})
+		case "h":
+			objectPlayer.mpv.Command([]string{"seek", "-5", "relative"})
+		case "l":
+			objectPlayer.mpv.Command([]string{"seek", "5", "relative"})
+		case "p":
 			objectPlayer.prevSong()
-		case "ctrl+n":
+		case "n":
 			objectPlayer.nextSong()
-		case "ctrl+k":
-			objectPlayer.mp.Command([]string{"add", "volume", "5"})
-		case "ctrl+j":
-			objectPlayer.mp.Command([]string{"add", "volume", "-5"})
+		case "k":
+			objectPlayer.mpv.Command([]string{"add", "volume", "5"})
+		case "j":
+			objectPlayer.mpv.Command([]string{"add", "volume", "-5"})
 		}
 
 	case msgMpvEvent:
@@ -83,87 +84,10 @@ func (p ModelControls) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				objectPlayer.nextSong()
 			}
 		}
-		cmds = append(cmds, awaitMpvEvent(objectPlayer.mp))
+		cmds = append(cmds, awaitMpvEvent(objectPlayer.mpv))
 	}
 
 	return p, tea.Batch(cmds...)
-}
-
-func (p ModelControls) getLengthString() string {
-	s := ""
-
-	property, _ := objectPlayer.mp.GetProperty("duration", mpv.FormatInt64)
-	length, _ := property.(int64)
-
-	current_progress := time.Duration(length) * time.Second
-	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
-	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
-	hours := math.Floor(current_progress.Hours())
-
-	if hours > 0 {
-		s += fmt.Sprintf("%v:", hours)
-	}
-
-	s += fmt.Sprintf("%02v:", minutes)
-	s += fmt.Sprintf("%02v", seconds)
-
-	return s
-}
-
-func (p ModelControls) getPositionString() string {
-	s := ""
-
-	property, _ := objectPlayer.mp.GetProperty("time-pos", mpv.FormatInt64)
-	progress, _ := property.(int64)
-
-	current_progress := time.Duration(progress) * time.Second
-	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
-	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
-	hours := math.Floor(current_progress.Hours())
-
-	if hours > 0 {
-		s += fmt.Sprintf("%v:", hours)
-	}
-
-	s += fmt.Sprintf("%02v:", minutes)
-	s += fmt.Sprintf("%02v", seconds)
-
-	return s
-}
-
-func (p ModelControls) getPausedString() string {
-	s := ""
-
-	property, _ := objectPlayer.mp.GetProperty("pause", mpv.FormatFlag)
-	paused, _ := property.(bool)
-
-	if paused {
-		s = "||"
-	} else {
-		s = "|>"
-	}
-
-	return s
-}
-
-func (p ModelControls) getVolumeString() string {
-	s := ""
-
-	property, _ := objectPlayer.mp.GetProperty("volume", mpv.FormatInt64)
-	volume, _ := property.(int64)
-
-	// Hacky way to keep the icon stable when volume changes.
-	icon := " "
-
-	if volume <= 33 {
-		icon = " "
-	} else if volume <= 66 {
-		icon = " "
-	}
-
-	s = fmt.Sprintf("%v %v%%", icon, volume)
-
-	return s
 }
 
 func (p ModelControls) View() string {
@@ -178,7 +102,7 @@ func (p ModelControls) View() string {
 	}
 
 	// Get played percentage.
-	property, _ := objectPlayer.mp.GetProperty("percent-pos", mpv.FormatDouble)
+	property, _ := objectPlayer.mpv.GetProperty("percent-pos", mpv.FormatDouble)
 	percentPos, _ := property.(float64)
 
 	// Create timer and controls strings.
@@ -242,4 +166,87 @@ func (p ModelControls) View() string {
 	)
 
 	return output
+}
+
+func awaitMpvEvent(m *mpv.Mpv) tea.Cmd {
+	return func() tea.Msg {
+		return msgMpvEvent(m.WaitEvent(10000))
+	}
+}
+
+func (p ModelControls) getLengthString() string {
+	s := ""
+
+	property, _ := objectPlayer.mpv.GetProperty("duration", mpv.FormatInt64)
+	length, _ := property.(int64)
+
+	current_progress := time.Duration(length) * time.Second
+	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
+	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
+	hours := math.Floor(current_progress.Hours())
+
+	if hours > 0 {
+		s += fmt.Sprintf("%v:", hours)
+	}
+
+	s += fmt.Sprintf("%02v:", minutes)
+	s += fmt.Sprintf("%02v", seconds)
+
+	return s
+}
+
+func (p ModelControls) getPositionString() string {
+	s := ""
+
+	property, _ := objectPlayer.mpv.GetProperty("time-pos", mpv.FormatInt64)
+	progress, _ := property.(int64)
+
+	current_progress := time.Duration(progress) * time.Second
+	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
+	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
+	hours := math.Floor(current_progress.Hours())
+
+	if hours > 0 {
+		s += fmt.Sprintf("%v:", hours)
+	}
+
+	s += fmt.Sprintf("%02v:", minutes)
+	s += fmt.Sprintf("%02v", seconds)
+
+	return s
+}
+
+func (p ModelControls) getPausedString() string {
+	s := ""
+
+	property, _ := objectPlayer.mpv.GetProperty("pause", mpv.FormatFlag)
+	paused, _ := property.(bool)
+
+	if paused {
+		s = "||"
+	} else {
+		s = "|>"
+	}
+
+	return s
+}
+
+func (p ModelControls) getVolumeString() string {
+	s := ""
+
+	property, _ := objectPlayer.mpv.GetProperty("volume", mpv.FormatInt64)
+	volume, _ := property.(int64)
+
+	// Hacky way to keep the icon stable when volume changes.
+	icon := " "
+
+	if volume <= 33 {
+		icon = " "
+	} else if volume <= 66 {
+		icon = " "
+	}
+
+	s = fmt.Sprintf("%v %v%%", icon, volume)
+
+	return s
 }

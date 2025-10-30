@@ -3,7 +3,6 @@ package main
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/gen2brain/go-mpv"
 )
 
 type focusedModel int
@@ -13,16 +12,11 @@ type ModelMain struct {
 	modelControls tea.Model
 }
 
-func awaitMpvEvent(m *mpv.Mpv) tea.Cmd {
-	return func() tea.Msg {
-		return msgMpvEvent(m.WaitEvent(10000))
-	}
-}
-
 func (m ModelMain) Init() tea.Cmd {
 	var cmds []tea.Cmd
 
-	cmds = append(cmds, awaitMpvEvent(objectPlayer.mp))
+	cmds = append(cmds, awaitMpvEvent(objectPlayer.mpv))
+	cmds = append(cmds, m.modelLibrary.Init())
 
 	return tea.Batch(cmds...)
 }
@@ -52,11 +46,15 @@ func (m ModelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.modelControls, cmd = m.modelControls.Update(msg)
 			cmds = append(cmds, cmd)
 		case focusLibrary:
-			break
+			m.modelLibrary, cmd = m.modelLibrary.Update(msg)
+			cmds = append(cmds, cmd)
 		}
 
 	case msgMpvEvent:
 		m.modelControls, cmd = m.modelControls.Update(msg)
+		cmds = append(cmds, cmd)
+	case msgAlbumPageLoaded:
+		m.modelLibrary, cmd = m.modelLibrary.Update(msg)
 		cmds = append(cmds, cmd)
 	}
 
@@ -65,13 +63,14 @@ func (m ModelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m ModelMain) View() string {
 	playerRender := m.modelControls.View()
+	libraryRender := m.modelLibrary.View()
 
 	s := lipgloss.NewStyle().Height(terminalHeight).Render(
 		lipgloss.JoinVertical(
 			lipgloss.Center,
 			lipgloss.NewStyle().
 				Height(terminalHeight-lipgloss.Height(playerRender)).
-				Render("This is a funny test."),
+				Render(libraryRender),
 			playerRender,
 		),
 	)
