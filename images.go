@@ -8,6 +8,11 @@ import (
 	"strings"
 )
 
+var (
+	albumArtWidth  = 20
+	albumArtHeight = 9
+)
+
 func imageArray(imageId string) ([]string, error) {
 	imageFile := "./.tmp/" + imageId + ".jpg"
 
@@ -33,7 +38,14 @@ func imageArray(imageId string) ([]string, error) {
 		}
 	}
 
-	chafaCommand, err := exec.Command("chafa", "-s", "20x20", "-f", "symbols", imageFile).Output()
+	chafaCommand, err := exec.Command(
+		"chafa",
+		"-s",
+		"20x9",
+		"-f",
+		"symbols",
+		imageFile,
+	).Output()
 
 	chafaOutput := string(chafaCommand)
 

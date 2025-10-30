@@ -53,7 +53,7 @@ func (m ModelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgMpvEvent:
 		m.modelControls, cmd = m.modelControls.Update(msg)
 		cmds = append(cmds, cmd)
-	case msgAlbumPageLoaded:
+	case msgLibraryLoaded:
 		m.modelLibrary, cmd = m.modelLibrary.Update(msg)
 		cmds = append(cmds, cmd)
 	}
@@ -65,14 +65,18 @@ func (m ModelMain) View() string {
 	playerRender := m.modelControls.View()
 	libraryRender := m.modelLibrary.View()
 
-	s := lipgloss.NewStyle().Height(terminalHeight).Render(
-		lipgloss.JoinVertical(
-			lipgloss.Center,
-			lipgloss.NewStyle().
-				Height(terminalHeight-lipgloss.Height(playerRender)).
-				Render(libraryRender),
-			playerRender,
-		),
-	)
+	s := lipgloss.NewStyle().
+		Height(terminalHeight).
+		Width(terminalWidth).
+		Render(
+			lipgloss.JoinVertical(
+				lipgloss.Center,
+				lipgloss.NewStyle().
+					Height(terminalHeight-lipgloss.Height(playerRender)).
+					AlignVertical(lipgloss.Center).
+					Render(libraryRender),
+				playerRender,
+			),
+		)
 	return s
 }
