@@ -15,15 +15,17 @@ type PlayerManager struct {
 }
 
 type Song struct {
-	url   string
-	title string
-	id    string
+	url    string
+	title  string
+	artist string
+	id     string
 }
 
 type Album struct {
-	id    string
-	art   []string
-	title string
+	id     string
+	art    []string
+	title  string
+	artist string
 }
 
 type Playlist struct {
@@ -97,6 +99,7 @@ func (p PlayerManager) queueSong(songId string) {
 
 	// Get title
 	var songTitle string = songInfo["title"].(string)
+	var songArtist string = songInfo["artist"].(string)
 
 	// songArt, err := imageArray(songInfo["coverArt"].(string))
 
@@ -106,9 +109,10 @@ func (p PlayerManager) queueSong(songId string) {
 
 	// Append it to the playlist.
 	p.playlist.songs = append(p.playlist.songs, Song{
-		url:   songUrl,
-		id:    songId,
-		title: songTitle,
+		url:    songUrl,
+		id:     songId,
+		title:  songTitle,
+		artist: songArtist,
 		// art:   songArt,
 	})
 }

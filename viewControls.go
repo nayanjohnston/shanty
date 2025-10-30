@@ -18,20 +18,20 @@ var styleOutputUnfocused = lipgloss.NewStyle().
 	BorderTop(true)
 
 var styleOutputFocused = styleOutputUnfocused.
-	BorderForeground(lipgloss.Color("99"))
+	BorderForeground(colorFocus)
 
 var styleTimeUnfocused = lipgloss.NewStyle().
 	Align(lipgloss.Center).
 	Width(11)
 
 var styleTimeFocused = styleTimeUnfocused.
-	Foreground(lipgloss.Color("99"))
+	Foreground(colorFocus)
 
 var styleInfoUnfocused = lipgloss.NewStyle().
 	Width(22)
 
 var styleInfoFocused = styleInfoUnfocused.
-	Foreground(lipgloss.Color("99"))
+	Foreground(colorFocus)
 
 type ModelControls struct {
 	modelProgressBar progress.Model

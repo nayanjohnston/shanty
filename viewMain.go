@@ -73,7 +73,7 @@ func (m ModelMain) View() string {
 				lipgloss.Center,
 				lipgloss.NewStyle().
 					Height(terminalHeight-lipgloss.Height(playerRender)).
-					AlignVertical(lipgloss.Center).
+					AlignVertical(lipgloss.Bottom).
 					Render(libraryRender),
 				playerRender,
 			),
