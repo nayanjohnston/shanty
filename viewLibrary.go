@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -102,11 +101,12 @@ func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
 			return l, nil
 		case "enter":
-			log.Printf(
-				"%v - %v",
-				l.currentPageContent[l.selectedAlbum].title,
-				l.currentPageContent[l.selectedAlbum].artist,
-			)
+			objectPlayer.playlist.songs = []Song{}
+			objectPlayer.playlist.index = 0
+			for _, song := range l.currentPageContent[l.selectedAlbum].songs {
+				objectPlayer.queueSong(song)
+			}
+			objectPlayer.loadSong(true)
 		}
 	case msgLibraryLoaded:
 		l.library = msg
@@ -228,6 +228,7 @@ func getLibrary() tea.Cmd {
 					artist: element.(map[string]any)["artist"].(string),
 					id:     element.(map[string]any)["id"].(string),
 					art:    albumArt,
+					songs:  getTracklist(element.(map[string]any)["id"].(string)),
 				})
 			}
 
@@ -236,6 +237,44 @@ func getLibrary() tea.Cmd {
 
 		return msgLibraryLoaded(newLibrary)
 	}
+}
+
+func getTracklist(albumId string) []Song {
+	newTracklist := []Song{}
+
+	albumUrl := config.ServerUrl + "/rest/getAlbum?u=" + config.ServerUser +
+		"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + albumId
+
+	result, err := http.Get(albumUrl)
+
+	if err != nil {
+		panic(err)
+	}
+
+	resultBody, _ := io.ReadAll(result.Body)
+
+	var list any
+	json.Unmarshal([]byte(resultBody), &list)
+
+	songsList, _ := list.(map[string]any)["subsonic-response"].(map[string]any)["album"].(map[string]any)["song"].([]any)
+
+	for _, element := range songsList {
+		songId := element.(map[string]any)["id"].(string)
+		songTitle := element.(map[string]any)["title"].(string)
+		songArtist := element.(map[string]any)["artist"].(string)
+
+		songUrl := config.ServerUrl + "/rest/stream.view?u=" + config.ServerUser +
+			"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + songId
+		newSong := Song{
+			id:     songId,
+			url:    songUrl,
+			title:  songTitle,
+			artist: songArtist,
+		}
+
+		newTracklist = append(newTracklist, newSong)
+	}
+	return newTracklist
 }
 
 func (l ModelLibrary) getAlbumPage(page int) []Album {

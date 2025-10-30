@@ -46,17 +46,6 @@ func main() {
 
 	defer f.Close()
 
-	// PURGATORY - NERVER
-	objectPlayer.queueSong("oB7bzHOW82azEEgjNkGKKP")
-	// Shame - Chat Pile
-	objectPlayer.queueSong("lBAiNj6W8XhQos1hwWWPv1")
-	// Die Slow - Health
-	objectPlayer.queueSong("CswcJyoHCNG9hsMuG8BMLm")
-	// Where Losers Go to Die - Intercourse
-	objectPlayer.queueSong("4GUzBDhXTurVnQmcM2DvOU")
-	// Motherfucker, I Am Both_ “Amen” and “Hallelujah”… - Shearling
-	objectPlayer.queueSong("RuQ8j6ArKmWbVSbipoxcO1")
-
 	objectPlayer.loadSong(false)
 
 	p := tea.NewProgram(
@@ -80,11 +69,11 @@ func truncateText(s string, max int) string {
 		return s
 	}
 
-	lastIndex := strings.LastIndexAny(s[:max-3], " .,,:;-")
+	lastIndex := strings.LastIndexAny(s[:max-1], " .,,:;-")
 
 	if lastIndex < 0 {
-		return s[:max] + "..."
+		return s[:max] + "…"
 	}
 
-	return s[:lastIndex] + "..."
+	return s[:lastIndex] + "…"
 }
