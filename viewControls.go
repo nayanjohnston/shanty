@@ -12,38 +12,46 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
-var styleControls = lipgloss.NewStyle().
+var styleOutputUnfocused = lipgloss.NewStyle().
 	BorderStyle(lipgloss.NormalBorder()).
 	BorderTop(true)
 
-var styleTime = lipgloss.NewStyle().
+var styleOutputFocused = styleOutputUnfocused.
+	BorderForeground(lipgloss.Color("99"))
+
+var styleTimeUnfocused = lipgloss.NewStyle().
 	Align(lipgloss.Center).
 	Width(11)
 
-var styleTopRow = lipgloss.NewStyle().
+var styleTimeFocused = styleTimeUnfocused.
+	Foreground(lipgloss.Color("99"))
+
+var styleInfoUnfocused = lipgloss.NewStyle().
 	Width(22)
 
-type modelControls struct {
+var styleInfoFocused = styleInfoUnfocused.
+	Foreground(lipgloss.Color("99"))
+
+type ModelControls struct {
 	modelProgressBar progress.Model
-	isFocused        bool
 }
 
 type msgMpvEvent *mpv.Event
 
-func initializeModelControls() modelControls {
+func initializeModelControls() ModelControls {
 	newProgressBar := progress.New(progress.WithDefaultGradient())
 	newProgressBar.ShowPercentage = false
 
-	return modelControls{
+	return ModelControls{
 		modelProgressBar: newProgressBar,
 	}
 }
 
-func (p modelControls) Init() tea.Cmd {
+func (p ModelControls) Init() tea.Cmd {
 	return nil
 }
 
-func (p modelControls) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (p ModelControls) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
@@ -81,7 +89,7 @@ func (p modelControls) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return p, tea.Batch(cmds...)
 }
 
-func (p modelControls) getLengthString() string {
+func (p ModelControls) getLengthString() string {
 	s := ""
 
 	property, _ := objectPlayer.mp.GetProperty("duration", mpv.FormatInt64)
@@ -102,7 +110,7 @@ func (p modelControls) getLengthString() string {
 	return s
 }
 
-func (p modelControls) getPositionString() string {
+func (p ModelControls) getPositionString() string {
 	s := ""
 
 	property, _ := objectPlayer.mp.GetProperty("time-pos", mpv.FormatInt64)
@@ -123,7 +131,7 @@ func (p modelControls) getPositionString() string {
 	return s
 }
 
-func (p modelControls) getPausedString() string {
+func (p ModelControls) getPausedString() string {
 	s := ""
 
 	property, _ := objectPlayer.mp.GetProperty("pause", mpv.FormatFlag)
@@ -138,7 +146,7 @@ func (p modelControls) getPausedString() string {
 	return s
 }
 
-func (p modelControls) getVolumeString() string {
+func (p ModelControls) getVolumeString() string {
 	s := ""
 
 	property, _ := objectPlayer.mp.GetProperty("volume", mpv.FormatInt64)
@@ -158,7 +166,17 @@ func (p modelControls) getVolumeString() string {
 	return s
 }
 
-func (p modelControls) View() string {
+func (p ModelControls) View() string {
+	styleTime := styleTimeUnfocused
+	styleInfo := styleInfoUnfocused
+	styleOutput := styleOutputUnfocused
+
+	if currentFocus == focusPlayer {
+		styleTime = styleTimeFocused
+		styleInfo = styleInfoFocused
+		styleOutput = styleOutputFocused
+	}
+
 	// Get played percentage.
 	property, _ := objectPlayer.mp.GetProperty("percent-pos", mpv.FormatDouble)
 	percentPos, _ := property.(float64)
@@ -188,15 +206,15 @@ func (p modelControls) View() string {
 	)
 
 	// Create renders for information row.
-	renderControlsLeft := styleTopRow.
+	renderControlsLeft := styleInfo.
 		AlignHorizontal(lipgloss.Left).
 		Render(volumeString)
 
-	renderControlsRight := styleTopRow.
+	renderControlsRight := styleInfo.
 		AlignHorizontal(lipgloss.Right).
 		Render("")
 
-	renderControlsCenter := styleTopRow.
+	renderControlsCenter := styleInfo.
 		AlignHorizontal(lipgloss.Center).
 		Width(terminalWidth -
 			lipgloss.Width(renderControlsLeft) -
@@ -214,15 +232,14 @@ func (p modelControls) View() string {
 		renderControlsRight,
 	)
 
-	output := styleControls.
-		Render(
-			lipgloss.JoinVertical(
-				lipgloss.Center,
+	output := styleOutput.Render(
+		lipgloss.JoinVertical(
+			lipgloss.Center,
 
-				renderControls,
-				renderProgress,
-			),
-		)
+			renderControls,
+			renderProgress,
+		),
+	)
 
 	return output
 }

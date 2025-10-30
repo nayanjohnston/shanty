@@ -8,15 +8,9 @@ import (
 
 type focusedModel int
 
-const (
-	focusPlayer focusedModel = iota
-	focusLibrary
-)
-
-type modelMain struct {
+type ModelMain struct {
 	modelLibrary  tea.Model
 	modelControls tea.Model
-	focus         focusedModel
 }
 
 func awaitMpvEvent(m *mpv.Mpv) tea.Cmd {
@@ -25,17 +19,15 @@ func awaitMpvEvent(m *mpv.Mpv) tea.Cmd {
 	}
 }
 
-func (m modelMain) Init() tea.Cmd {
+func (m ModelMain) Init() tea.Cmd {
 	var cmds []tea.Cmd
-
-	m.ChangeFocus(focusPlayer)
 
 	cmds = append(cmds, awaitMpvEvent(objectPlayer.mp))
 
 	return tea.Batch(cmds...)
 }
 
-func (m modelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ModelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	var cmds []tea.Cmd
 
@@ -48,12 +40,14 @@ func (m modelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 		case "J":
-			m.ChangeFocus(focusPlayer)
+			currentFocus = focusPlayer
+			return m, nil
 		case "K":
-			m.ChangeFocus(focusLibrary)
+			currentFocus = focusLibrary
+			return m, nil
 		}
 
-		switch m.focus {
+		switch currentFocus {
 		case focusPlayer:
 			m.modelControls, cmd = m.modelControls.Update(msg)
 			cmds = append(cmds, cmd)
@@ -69,18 +63,7 @@ func (m modelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-func (m modelMain) ChangeFocus(newFocus focusedModel) {
-	m.focus = newFocus
-
-	if m.focus == focusPlayer {
-		if pM, ok := m.modelControls.(modelControls); ok {
-			pM.isFocused = true
-			m.modelControls = pM
-		}
-	}
-}
-
-func (m modelMain) View() string {
+func (m ModelMain) View() string {
 	playerRender := m.modelControls.View()
 
 	s := lipgloss.NewStyle().Height(terminalHeight).Render(

@@ -4,11 +4,16 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-var objectPlayer PlayerManager
+const (
+	focusPlayer focusedModel = iota
+	focusLibrary
+)
 
 var (
+	objectPlayer   PlayerManager
 	terminalWidth  int
 	terminalHeight int
+	currentFocus   focusedModel
 )
 
 func main() {
@@ -43,11 +48,13 @@ func main() {
 	objectPlayer.loadSong(false)
 
 	p := tea.NewProgram(
-		modelMain{
+		ModelMain{
 			modelControls: initializeModelControls(),
 		},
 		tea.WithAltScreen(),
 	)
+
+	currentFocus = focusPlayer
 
 	if _, err = p.Run(); err != nil {
 		panic(err)
