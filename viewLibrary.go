@@ -21,16 +21,33 @@ type ModelLibrary struct {
 	pageIndex      int
 	pageAmount     int
 	libraryContent []Album
-	albumIndex     int
+	albumSelection int
 }
 
-type msgAlbumPageLoaded []Album
 type msgLibraryLoaded []Album
+
+var styleTitle = lipgloss.NewStyle().
+	MaxWidth(22).
+	Width(22).
+	MaxHeight(3).
+	Height(3).
+	Padding(0, 1, 0, 1).
+	AlignHorizontal(lipgloss.Center)
+
+var styleArt = lipgloss.NewStyle().
+	Width(albumArtWidth).
+	Height(albumArtHeight)
+
+var styleAlbumUnfocused = lipgloss.NewStyle().
+	Border(lipgloss.NormalBorder())
+
+var styleAlbumFocused = styleAlbumUnfocused.
+	BorderForeground(lipgloss.Color("99"))
 
 func initializeModelLibrary() ModelLibrary {
 	modelLibrary := ModelLibrary{
-		pageIndex:  0,
-		albumIndex: 0,
+		pageIndex:      0,
+		albumSelection: 0,
 	}
 
 	return modelLibrary
@@ -44,26 +61,31 @@ func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "l":
+			l.albumSelection = l.changeSelection(1)
+			return l, nil
+		case "h":
+			l.albumSelection = l.changeSelection(-1)
+			return l, nil
+		case "j":
+			l.albumSelection = l.changeSelection(pageColumns)
+			return l, nil
+		case "k":
+			l.albumSelection = l.changeSelection(-pageColumns)
+			return l, nil
 		case "n":
-			if l.pageIndex > len(l.libraryContent)/(pageRows*pageColumns)-1 {
-				return l, nil
-			}
-
-			l.pageIndex += 1
+			l.pageIndex = l.changePage(1)
 			return l, nil
 		case "p":
-			if l.pageIndex-1 < 0 {
-				return l, nil
-			}
-
-			l.pageIndex -= 1
+			l.pageIndex = l.changePage(-1)
 			return l, nil
 		}
 	case msgLibraryLoaded:
 		l.libraryContent = msg
 
 		l.pageAmount = int(math.Ceil(
-			float64(len(l.libraryContent)) / float64((pageRows * pageColumns)),
+			float64(len(l.libraryContent)) /
+				float64(pageRows*pageColumns),
 		))
 
 		return l, nil
@@ -79,17 +101,6 @@ func (l ModelLibrary) View() string {
 	if len(l.libraryContent) == 0 {
 		outputString += "LOADING LIBRARY"
 	} else {
-		styleTitle := lipgloss.NewStyle().
-			MaxWidth(22).
-			Width(22).
-			MaxHeight(3).
-			Height(3).
-			Padding(0, 1, 0, 1).
-			AlignHorizontal(lipgloss.Center)
-
-		styleArt := lipgloss.NewStyle().
-			Width(albumArtWidth).
-			Height(albumArtHeight)
 
 		for index, element := range l.getAlbumPage(l.pageIndex) {
 			if index != 0 {
@@ -103,8 +114,13 @@ func (l ModelLibrary) View() string {
 				}
 			}
 
-			albumDisplay := lipgloss.NewStyle().
-				Border(lipgloss.NormalBorder()).
+			styleAlbum := styleAlbumUnfocused
+
+			if index == l.albumSelection {
+				styleAlbum = styleAlbumFocused
+			}
+
+			albumDisplay := styleAlbum.
 				Render(
 					lipgloss.JoinVertical(lipgloss.Center,
 						styleArt.Render(drawImage(element.art)),
@@ -204,4 +220,28 @@ func (l ModelLibrary) getAlbumPage(page int) []Album {
 	}
 
 	return albumPage
+}
+
+func (l ModelLibrary) changeSelection(amount int) int {
+	newSelection := l.albumSelection + amount
+
+	if newSelection < 0 {
+		return l.albumSelection
+	} else if newSelection > (pageRows*pageColumns)-1 {
+		return l.albumSelection
+	}
+
+	return newSelection
+}
+
+func (l ModelLibrary) changePage(amount int) int {
+	newPage := l.pageIndex + amount
+
+	if newPage > l.pageAmount {
+		return l.pageIndex
+	} else if newPage < 0 {
+		return l.pageIndex
+	}
+
+	return newPage
 }
