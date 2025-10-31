@@ -68,14 +68,24 @@ func (m ModelMain) View() string {
 	playerRender := m.modelControls.View()
 	libraryRender := m.modelLibrary.View()
 
+	statusRender := lipgloss.NewStyle().
+		Width(terminalWidth).
+		Background(lipgloss.Color("15")).
+		Foreground(lipgloss.Color("0")).
+		AlignHorizontal(lipgloss.Left).
+		Padding(0, 1, 0, 1).
+		Render("STATUS")
+
 	s := lipgloss.NewStyle().
 		Height(terminalHeight).
+		MaxHeight(terminalHeight).
 		Width(terminalWidth).
 		Render(
 			lipgloss.JoinVertical(
 				lipgloss.Center,
+				statusRender,
 				lipgloss.NewStyle().
-					Height(terminalHeight-lipgloss.Height(playerRender)).
+					Height(terminalHeight-4).
 					AlignVertical(lipgloss.Bottom).
 					Render(libraryRender),
 				playerRender,

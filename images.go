@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"os"
@@ -9,8 +10,8 @@ import (
 )
 
 var (
-	albumArtWidth  = 20
-	albumArtHeight = 9
+	albumArtWidth  = 16
+	albumArtHeight = 4
 )
 
 func imageArray(imageId string) ([]string, error) {
@@ -41,9 +42,13 @@ func imageArray(imageId string) ([]string, error) {
 	chafaCommand, err := exec.Command(
 		"chafa",
 		"-s",
-		"20x9",
+		fmt.Sprintf("%vx%v", albumArtWidth, albumArtHeight),
 		"-f",
 		"symbols",
+		"--align",
+		"hcenter",
+		"--view-size",
+		fmt.Sprintf("%vx%v", albumArtWidth, albumArtHeight),
 		imageFile,
 	).Output()
 

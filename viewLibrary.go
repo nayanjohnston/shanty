@@ -28,20 +28,18 @@ type ModelLibrary struct {
 type msgLibraryLoaded []Album
 
 var styleTitleUnfocused = lipgloss.NewStyle().
-	MaxWidth(22).
-	Width(22).
+	MaxWidth(albumArtWidth).
+	Width(albumArtWidth).
 	MaxHeight(2).
-	Padding(0, 1, 0, 1).
 	AlignHorizontal(lipgloss.Center)
 
 var styleTitleFocused = styleTitleUnfocused.
 	Foreground(colorFocus)
 
 var styleArtistUnfocused = lipgloss.NewStyle().
-	MaxWidth(22).
-	Width(22).
+	MaxWidth(albumArtWidth).
+	Width(albumArtWidth).
 	MaxHeight(1).
-	Padding(0, 1, 0, 1).
 	Foreground(lipgloss.Color("7")).
 	AlignHorizontal(lipgloss.Center)
 
@@ -53,10 +51,11 @@ var styleArt = lipgloss.NewStyle().
 	Height(albumArtHeight)
 
 var styleAlbumUnfocused = lipgloss.NewStyle().
-	MaxWidth(24).
-	Width(22).
-	MaxHeight(14).
-	Height(12).
+	MaxWidth(albumArtWidth+4).
+	Width(albumArtWidth+2).
+	Padding(0, 1, 0, 1).
+	MaxHeight(albumArtHeight + 5).
+	Height(albumArtHeight + 3).
 	Border(lipgloss.NormalBorder())
 
 var styleAlbumFocused = styleAlbumUnfocused.
@@ -142,11 +141,15 @@ func (l ModelLibrary) View() string {
 	for index, element := range l.currentPageContent {
 		// Create new row if full
 		if index != 0 && math.Mod(float64(index), float64(pageColumns)) == 0 {
-			outputString = lipgloss.JoinVertical(
-				lipgloss.Left,
-				outputString,
-				rowString,
-			)
+			if index == pageColumns {
+				outputString = rowString
+			} else {
+				outputString = lipgloss.JoinVertical(
+					lipgloss.Left,
+					outputString,
+					rowString,
+				)
+			}
 
 			rowString = ""
 		}
@@ -165,8 +168,8 @@ func (l ModelLibrary) View() string {
 			lipgloss.JoinVertical(
 				lipgloss.Center,
 				styleArt.Render(drawImage(element.art)),
-				styleTitle.Render(truncateText(element.title, 40)),
-				styleArtist.Render(truncateText(element.artist, 20)),
+				styleTitle.Render(truncateText(element.title, albumArtWidth*2)),
+				styleArtist.Render(truncateText(element.artist, albumArtWidth)),
 			),
 		)
 
@@ -188,6 +191,11 @@ func (l ModelLibrary) View() string {
 		outputString,
 		fmt.Sprintf("Page %v/%v", l.currentPageNumber+1, l.getPageAmount()),
 	)
+
+	outputString = lipgloss.NewStyle().
+		Height(terminalHeight - 4).
+		AlignVertical(lipgloss.Center).
+		Render(outputString)
 
 	return outputString
 }
@@ -323,8 +331,8 @@ func (l ModelLibrary) changeSelection(amount int) int {
 func (l ModelLibrary) changePage(amount int) int {
 	newPage := l.currentPageNumber + amount
 
-	pageColumns = int(math.Floor(float64(terminalWidth / 24)))
-	pageRows = int(math.Floor(float64((terminalHeight - 4) / 14)))
+	pageColumns = int(math.Floor(float64(terminalWidth / (albumArtWidth + 4))))
+	pageRows = int(math.Floor(float64((terminalHeight - 4) / (albumArtHeight + 5))))
 
 	if newPage > l.getPageAmount()-1 {
 		return int(math.Max(0, float64(l.getPageAmount()-1)))
