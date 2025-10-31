@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -101,8 +102,8 @@ func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
 			return l, nil
 		case "enter":
-			objectPlayer.playlist.songs = []Song{}
-			objectPlayer.playlist.index = 0
+			objectPlayer.queue.songs = []Song{}
+			objectPlayer.queue.index = 0
 			for _, song := range l.currentPageContent[l.selectedAlbum].songs {
 				objectPlayer.queueSong(song)
 			}
@@ -262,14 +263,18 @@ func getTracklist(albumId string) []Song {
 		songId := element.(map[string]any)["id"].(string)
 		songTitle := element.(map[string]any)["title"].(string)
 		songArtist := element.(map[string]any)["artist"].(string)
+		songDuration := element.(map[string]any)["duration"].(float64)
 
-		songUrl := config.ServerUrl + "/rest/stream.view?u=" + config.ServerUser +
+		log.Printf("%v", songDuration)
+
+		songUrl := config.ServerUrl + "/rest/download.view?u=" + config.ServerUser +
 			"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + songId
 		newSong := Song{
-			id:     songId,
-			url:    songUrl,
-			title:  songTitle,
-			artist: songArtist,
+			id:       songId,
+			url:      songUrl,
+			title:    songTitle,
+			artist:   songArtist,
+			duration: songDuration,
 		}
 
 		newTracklist = append(newTracklist, newSong)

@@ -13,12 +13,9 @@ import (
 )
 
 // Styles
-var styleOutputUnfocused = lipgloss.NewStyle().
-	BorderStyle(lipgloss.NormalBorder()).
-	BorderTop(true)
+var styleOutputUnfocused = lipgloss.NewStyle()
 
-var styleOutputFocused = styleOutputUnfocused.
-	BorderForeground(colorFocus)
+var styleOutputFocused = styleOutputUnfocused
 
 var styleTimeUnfocused = lipgloss.NewStyle().
 	Align(lipgloss.Center).
@@ -27,11 +24,19 @@ var styleTimeUnfocused = lipgloss.NewStyle().
 var styleTimeFocused = styleTimeUnfocused.
 	Foreground(colorFocus)
 
-var styleInfoUnfocused = lipgloss.NewStyle().
+var styleControlsUnfocused = lipgloss.NewStyle().
 	Width(22)
 
-var styleInfoFocused = styleInfoUnfocused.
+var styleControlsFocused = styleControlsUnfocused.
 	Foreground(colorFocus)
+
+var styleInfoUnfocused = lipgloss.NewStyle().
+	Background(lipgloss.Color("15")).
+	Foreground(lipgloss.Color("0")).
+	AlignHorizontal(lipgloss.Center)
+
+var styleInfoFocused = styleInfoUnfocused.
+	Background(colorFocus)
 
 type ModelControls struct {
 	modelProgressBar progress.Model
@@ -40,7 +45,7 @@ type ModelControls struct {
 type msgMpvEvent *mpv.Event
 
 func initializeModelControls() ModelControls {
-	newProgressBar := progress.New(progress.WithDefaultGradient())
+	newProgressBar := progress.New()
 	newProgressBar.ShowPercentage = false
 
 	return ModelControls{
@@ -92,18 +97,33 @@ func (p ModelControls) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (p ModelControls) View() string {
 	styleTime := styleTimeUnfocused
-	styleInfo := styleInfoUnfocused
+	styleControls := styleControlsUnfocused
 	styleOutput := styleOutputUnfocused
+	styleInfo := styleInfoUnfocused
+
+	p.modelProgressBar.FullColor = "15"
 
 	if currentFocus == focusPlayer {
 		styleTime = styleTimeFocused
-		styleInfo = styleInfoFocused
+		styleControls = styleControlsFocused
 		styleOutput = styleOutputFocused
+		styleInfo = styleInfoFocused
+
+		p.modelProgressBar.FullColor = "13"
 	}
 
 	// Get played percentage.
 	property, _ := objectPlayer.mpv.GetProperty("percent-pos", mpv.FormatDouble)
 	percentPos, _ := property.(float64)
+
+	infoString := ""
+	// Get song name and artist, if available.
+	if len(objectPlayer.queue.songs) > 0 {
+		infoString = objectPlayer.queue.songs[objectPlayer.queue.index].title +
+			" - " + objectPlayer.queue.songs[objectPlayer.queue.index].artist
+	} else {
+		infoString = "No Song Playing!"
+	}
 
 	// Create timer and controls strings.
 	positionString := p.getPositionString()
@@ -130,15 +150,15 @@ func (p ModelControls) View() string {
 	)
 
 	// Create renders for information row.
-	renderControlsLeft := styleInfo.
+	renderControlsLeft := styleControls.
 		AlignHorizontal(lipgloss.Left).
+		Render()
+
+	renderControlsRight := styleControls.
+		AlignHorizontal(lipgloss.Right).
 		Render(volumeString)
 
-	renderControlsRight := styleInfo.
-		AlignHorizontal(lipgloss.Right).
-		Render("")
-
-	renderControlsCenter := styleInfo.
+	renderControlsCenter := styleControls.
 		AlignHorizontal(lipgloss.Center).
 		Width(terminalWidth -
 			lipgloss.Width(renderControlsLeft) -
@@ -156,10 +176,15 @@ func (p ModelControls) View() string {
 		renderControlsRight,
 	)
 
+	renderInfo := styleInfo.
+		Width(terminalWidth).
+		Render(infoString)
+
 	output := styleOutput.Render(
 		lipgloss.JoinVertical(
 			lipgloss.Center,
 
+			renderInfo,
 			renderControls,
 			renderProgress,
 		),

@@ -7,15 +7,16 @@ import (
 )
 
 type PlayerManager struct {
-	mpv      *mpv.Mpv
-	playlist *Playlist
+	mpv   *mpv.Mpv
+	queue *Queue
 }
 
 type Song struct {
-	url    string
-	title  string
-	artist string
-	id     string
+	url      string
+	title    string
+	artist   string
+	id       string
+	duration float64
 }
 
 type Album struct {
@@ -26,7 +27,7 @@ type Album struct {
 	songs  []Song
 }
 
-type Playlist struct {
+type Queue struct {
 	songs []Song
 	index int
 }
@@ -40,7 +41,7 @@ func createPlayer() PlayerManager {
 
 	return PlayerManager{
 		mpv: m,
-		playlist: &Playlist{
+		queue: &Queue{
 			index: 0,
 		},
 	}
@@ -69,24 +70,24 @@ func createMpv() (*mpv.Mpv, error) {
 }
 
 func (p PlayerManager) queueSong(song Song) {
-	// Append it to the playlist.
-	p.playlist.songs = append(p.playlist.songs, song)
+	// Append it to the queue.
+	p.queue.songs = append(p.queue.songs, song)
 }
 
 func (p PlayerManager) loadSong(play bool) {
-	// Check if we're in the range of the current playlist...
-	if p.playlist.index < 0 {
+	// Check if we're in the range of the current queue...
+	if p.queue.index < 0 {
 		return
 	}
 
-	if p.playlist.index > len(p.playlist.songs)-1 {
+	if p.queue.index > len(p.queue.songs)-1 {
 		return
 	}
 
 	// If so, load the songs URL in MPV.
 	p.mpv.Command([]string{
 		"loadfile",
-		p.playlist.songs[p.playlist.index].url,
+		p.queue.songs[p.queue.index].url,
 	})
 
 	// Set the "pause" property to what we've defined in function.
@@ -94,20 +95,20 @@ func (p PlayerManager) loadSong(play bool) {
 }
 
 func (p PlayerManager) nextSong() {
-	// If we're the last song in the playlist, go to the first song and pause.
-	if p.playlist.index >= len(p.playlist.songs)-1 {
-		p.playlist.index = 0
+	// If we're the last song in the queue, go to the first song and pause.
+	if p.queue.index >= len(p.queue.songs)-1 {
+		p.queue.index = 0
 		p.loadSong(false)
 
-		log.Printf("Next (Wrapped): Song %v", p.playlist.index)
+		log.Printf("Next (Wrapped): Song %v", p.queue.index)
 		return
 	}
 
 	// Otherwise, go forward a song and reload.
-	p.playlist.index += 1
+	p.queue.index += 1
 	p.loadSong(true)
 
-	log.Printf("Next: Song %v", p.playlist.index)
+	log.Printf("Next: Song %v", p.queue.index)
 }
 
 func (p PlayerManager) prevSong() {
@@ -115,15 +116,15 @@ func (p PlayerManager) prevSong() {
 	property, _ := p.mpv.GetProperty("time-pos", mpv.FormatInt64)
 	progress, _ := property.(int64)
 
-	// If we are, and we're not the first song in the playlist, go back a song.
+	// If we are, and we're not the first song in the queue, go back a song.
 	if progress < 2 {
-		if p.playlist.index > 0 {
-			p.playlist.index -= 1
+		if p.queue.index > 0 {
+			p.queue.index -= 1
 		}
 	}
 
 	// Then, reload the song.
 	p.loadSong(true)
 
-	log.Printf("Previous: Song %v", p.playlist.index)
+	log.Printf("Previous: Song %v", p.queue.index)
 }
