@@ -29,6 +29,9 @@ func (m ModelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		terminalWidth = msg.Width
 		terminalHeight = msg.Height
+
+		m.modelLibrary, cmd = m.modelLibrary.Update(msg)
+		cmds = append(cmds, cmd)
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":

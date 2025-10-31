@@ -77,6 +77,17 @@ func (l ModelLibrary) Init() tea.Cmd {
 
 func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		prevColumns := pageColumns
+		prevRows := pageRows
+		l.currentPageNumber = l.changePage(0)
+
+		if prevColumns != pageColumns || prevRows != pageRows {
+			l.selectedAlbum = 0
+			l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
+		}
+
+		return l, nil
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "l":
@@ -130,7 +141,7 @@ func (l ModelLibrary) View() string {
 	// Create album grid with current page
 	for index, element := range l.currentPageContent {
 		// Create new row if full
-		if index != 0 && math.Mod(float64(index), 3) == 0 {
+		if index != 0 && math.Mod(float64(index), float64(pageColumns)) == 0 {
 			outputString = lipgloss.JoinVertical(
 				lipgloss.Left,
 				outputString,
@@ -312,10 +323,13 @@ func (l ModelLibrary) changeSelection(amount int) int {
 func (l ModelLibrary) changePage(amount int) int {
 	newPage := l.currentPageNumber + amount
 
+	pageColumns = int(math.Floor(float64(terminalWidth / 24)))
+	pageRows = int(math.Floor(float64((terminalHeight - 4) / 14)))
+
 	if newPage > l.getPageAmount()-1 {
-		return l.currentPageNumber
+		return int(math.Max(0, float64(l.getPageAmount()-1)))
 	} else if newPage < 0 {
-		return l.currentPageNumber
+		return 0
 	}
 
 	return newPage
