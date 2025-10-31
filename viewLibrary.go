@@ -81,10 +81,6 @@ func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return l, nil
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "J":
-			focusedView = focusPlayer
-		case "L":
-			focusedModel = focusQueue
 		case "l":
 			l.selectedAlbum = l.changeSelection(1)
 			return l, nil
@@ -106,10 +102,15 @@ func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			objectPlayer.queue.songs = []Song{}
 			objectPlayer.queue.index = 0
+
+			var cmds []tea.Cmd
+
 			for _, song := range l.currentPageContent[l.selectedAlbum].tracklist {
 				objectPlayer.queueSong(song)
 			}
 			objectPlayer.loadSong(true)
+
+			return l, tea.Sequence(cmds...)
 		}
 	case msgLibraryLoaded:
 		l.library = msg

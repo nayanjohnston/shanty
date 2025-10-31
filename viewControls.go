@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"math"
-	"time"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -202,45 +200,17 @@ func awaitMpvEvent(m *mpv.Mpv) tea.Cmd {
 }
 
 func (p ModelControls) getLengthString() string {
-	s := ""
-
 	property, _ := objectPlayer.mpv.GetProperty("duration", mpv.FormatInt64)
 	length, _ := property.(int64)
 
-	current_progress := time.Duration(length) * time.Second
-	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
-	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
-	hours := math.Floor(current_progress.Hours())
-
-	if hours > 0 {
-		s += fmt.Sprintf("%v:", hours)
-	}
-
-	s += fmt.Sprintf("%02v:", minutes)
-	s += fmt.Sprintf("%02v", seconds)
-
-	return s
+	return intToTime(int(length))
 }
 
 func (p ModelControls) getPositionString() string {
-	s := ""
-
 	property, _ := objectPlayer.mpv.GetProperty("time-pos", mpv.FormatInt64)
 	progress, _ := property.(int64)
 
-	current_progress := time.Duration(progress) * time.Second
-	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
-	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
-	hours := math.Floor(current_progress.Hours())
-
-	if hours > 0 {
-		s += fmt.Sprintf("%v:", hours)
-	}
-
-	s += fmt.Sprintf("%02v:", minutes)
-	s += fmt.Sprintf("%02v", seconds)
-
-	return s
+	return intToTime(int(progress))
 }
 
 func (p ModelControls) getPausedString() string {
@@ -264,7 +234,6 @@ func (p ModelControls) getVolumeString() string {
 	property, _ := objectPlayer.mpv.GetProperty("volume", mpv.FormatInt64)
 	volume, _ := property.(int64)
 
-	// Hacky way to keep the icon stable when volume changes.
 	icon := " "
 
 	if volume <= 33 {

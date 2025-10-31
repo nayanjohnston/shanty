@@ -72,6 +72,14 @@ func (m ModelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
+		case "H":
+			focusedModel = focusLibrary
+		case "J":
+			focusedView = focusPlayer
+		case "1":
+			focusedModel = focusLibrary
+		case "2":
+			focusedModel = focusQueue
 		}
 
 		switch focusedView {
@@ -107,8 +115,7 @@ func (m ModelMain) View() string {
 	styleMain := lipgloss.NewStyle().
 		MaxHeight(sizeMainHeight).
 		Height(sizeMainHeight).
-		MaxWidth(sizeMainWidth).
-		AlignVertical(lipgloss.Bottom)
+		MaxWidth(sizeMainWidth)
 
 	playerRender := m.modelControls.View()
 

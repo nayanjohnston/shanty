@@ -1,7 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"math"
 	"strings"
+	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -24,6 +27,7 @@ const (
 
 var (
 	objectPlayer   PlayerManager
+	objectProgram  *tea.Program
 	terminalWidth  int
 	terminalHeight int
 	focusedView    focusView
@@ -52,15 +56,15 @@ func main() {
 
 	objectPlayer.loadSong(false)
 
-	p := tea.NewProgram(
+	objectProgram = tea.NewProgram(
 		initializeModelMain(),
 		tea.WithAltScreen(),
 	)
 
 	focusedView = focusPlayer
-	focusedModel = focusQueue
+	focusedModel = focusLibrary
 
-	if _, err := p.Run(); err != nil {
+	if _, err := objectProgram.Run(); err != nil {
 		panic(err)
 	}
 }
@@ -78,4 +82,21 @@ func truncateText(s string, max int) string {
 	}
 
 	return s[:lastIndex] + "…"
+}
+
+func intToTime(sec int) string {
+	s := ""
+	current_progress := time.Duration(sec) * time.Second
+	seconds := math.Floor(math.Mod(current_progress.Seconds(), 60))
+	minutes := math.Floor(math.Mod(current_progress.Minutes(), 60))
+	hours := math.Floor(current_progress.Hours())
+
+	if hours > 0 {
+		s += fmt.Sprintf("%v:", hours)
+	}
+
+	s += fmt.Sprintf("%02v:", minutes)
+	s += fmt.Sprintf("%02v", seconds)
+
+	return s
 }
