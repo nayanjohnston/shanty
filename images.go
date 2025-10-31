@@ -11,7 +11,7 @@ import (
 
 var (
 	albumArtWidth  = 16
-	albumArtHeight = 4
+	albumArtHeight = 5
 )
 
 func imageArray(imageId string) ([]string, error) {

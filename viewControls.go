@@ -63,6 +63,8 @@ func (p ModelControls) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "K":
+			focusedView = focusMain
 		case " ":
 			objectPlayer.mpv.Command([]string{"cycle", "pause"})
 		case "h":
@@ -103,7 +105,7 @@ func (p ModelControls) View() string {
 
 	p.modelProgressBar.FullColor = "15"
 
-	if currentFocus == focusPlayer {
+	if focusedView == focusPlayer {
 		styleTime = styleTimeFocused
 		styleControls = styleControlsFocused
 		styleOutput = styleOutputFocused

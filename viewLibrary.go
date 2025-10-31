@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"math"
 	"net/http"
 	"strconv"
@@ -27,6 +26,7 @@ type ModelLibrary struct {
 
 type msgLibraryLoaded []Album
 
+// Styles
 var styleTitleUnfocused = lipgloss.NewStyle().
 	MaxWidth(albumArtWidth).
 	Width(albumArtWidth).
@@ -77,18 +77,14 @@ func (l ModelLibrary) Init() tea.Cmd {
 func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		prevColumns := pageColumns
-		prevRows := pageRows
-		l.currentPageNumber = l.changePage(0)
-
-		if prevColumns != pageColumns || prevRows != pageRows {
-			l.selectedAlbum = 0
-			l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
-		}
-
+		l = l.changePage(0)
 		return l, nil
 	case tea.KeyMsg:
 		switch msg.String() {
+		case "J":
+			focusedView = focusPlayer
+		case "L":
+			focusedModel = focusQueue
 		case "l":
 			l.selectedAlbum = l.changeSelection(1)
 			return l, nil
@@ -102,26 +98,22 @@ func (l ModelLibrary) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			l.selectedAlbum = l.changeSelection(-pageColumns)
 			return l, nil
 		case "n":
-			l.currentPageNumber = l.changePage(1)
-			l.selectedAlbum = 0
-			l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
+			l = l.changePage(1)
 			return l, nil
 		case "p":
-			l.currentPageNumber = l.changePage(-1)
-			l.selectedAlbum = 0
-			l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
+			l = l.changePage(-1)
 			return l, nil
 		case "enter":
 			objectPlayer.queue.songs = []Song{}
 			objectPlayer.queue.index = 0
-			for _, song := range l.currentPageContent[l.selectedAlbum].songs {
+			for _, song := range l.currentPageContent[l.selectedAlbum].tracklist {
 				objectPlayer.queueSong(song)
 			}
 			objectPlayer.loadSong(true)
 		}
 	case msgLibraryLoaded:
 		l.library = msg
-		l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
+		l = l.changePage(0)
 		return l, nil
 	}
 
@@ -154,16 +146,19 @@ func (l ModelLibrary) View() string {
 			rowString = ""
 		}
 
+		// Create album styles.
 		styleAlbum := styleAlbumUnfocused
 		styleArtist := styleArtistUnfocused
 		styleTitle := styleTitleUnfocused
 
-		if index == l.selectedAlbum && currentFocus == focusLibrary {
+		// Change them to focused if so.
+		if index == l.selectedAlbum && focusedView == focusMain {
 			styleAlbum = styleAlbumFocused
 			styleArtist = styleArtistFocused
 			styleTitle = styleTitleFocused
 		}
 
+		// Create render of information
 		albumDisplay := styleAlbum.Render(
 			lipgloss.JoinVertical(
 				lipgloss.Center,
@@ -173,6 +168,7 @@ func (l ModelLibrary) View() string {
 			),
 		)
 
+		// Add it to horizontal string
 		rowString = lipgloss.JoinHorizontal(
 			lipgloss.Top,
 			rowString,
@@ -180,22 +176,39 @@ func (l ModelLibrary) View() string {
 		)
 	}
 
-	outputString = lipgloss.JoinVertical(lipgloss.Left,
-		outputString,
-		rowString,
-	)
+	// If there's some leftovers...
+	if outputString != "" && rowString != "" {
+		// If there's already a row, just add it on.
+		outputString = lipgloss.JoinVertical(lipgloss.Left,
+			outputString,
+			rowString,
+		)
+	} else if outputString == "" {
+		// Otherwise, just set output to row
+		outputString = rowString
+	}
 
-	rowString = ""
+	// Render One: The albums from left to right, positioned on the top left
+	// corner.
+	outputString = lipgloss.NewStyle().
+		Height(pageRows * (albumArtHeight + 5)).
+		Width(pageColumns * (albumArtWidth + 4)).
+		AlignVertical(lipgloss.Top).
+		AlignHorizontal(lipgloss.Left).
+		Render(outputString)
 
+	// Render Two: The output of the previous, but centered in the space
+	// available
+	outputString = lipgloss.NewStyle().
+		Height(sizeMainHeight - 1).
+		AlignVertical(lipgloss.Center).
+		Render(outputString)
+
+	// Add page count to bottom of view.
 	outputString = lipgloss.JoinVertical(lipgloss.Center,
 		outputString,
 		fmt.Sprintf("Page %v/%v", l.currentPageNumber+1, l.getPageAmount()),
 	)
-
-	outputString = lipgloss.NewStyle().
-		Height(terminalHeight - 4).
-		AlignVertical(lipgloss.Center).
-		Render(outputString)
 
 	return outputString
 }
@@ -228,7 +241,9 @@ func getLibrary() tea.Cmd {
 			var list any
 			json.Unmarshal([]byte(resultBody), &list)
 
-			albumList, ok := list.(map[string]any)["subsonic-response"].(map[string]any)["albumList"].(map[string]any)["album"].([]any)
+			respSubsonic, _ := list.(map[string]any)["subsonic-response"]
+			respAlbumList, _ := respSubsonic.(map[string]any)["albumList"]
+			respAlbums, ok := respAlbumList.(map[string]any)["album"].([]any)
 
 			// Most likely out of range, so just exit
 			if ok == false {
@@ -236,20 +251,24 @@ func getLibrary() tea.Cmd {
 				continue
 			}
 
-			for _, element := range albumList {
-				albumArt, err := imageArray(element.(map[string]any)["coverArt"].(string))
+			for _, element := range respAlbums {
+				albumArtUrl := element.(map[string]any)["coverArt"].(string)
+				albumArt, err := imageArray(albumArtUrl)
 
 				if err != nil {
 					panic(err)
 				}
 
-				newLibrary = append(newLibrary, Album{
+				newAlbum := Album{
 					title:  element.(map[string]any)["title"].(string),
 					artist: element.(map[string]any)["artist"].(string),
 					id:     element.(map[string]any)["id"].(string),
 					art:    albumArt,
-					songs:  getTracklist(element.(map[string]any)["id"].(string)),
-				})
+				}
+
+				newAlbum.tracklist = getTracklist(&newAlbum)
+
+				newLibrary = append(newLibrary, newAlbum)
 			}
 
 			currentPageNumber += 1
@@ -259,11 +278,11 @@ func getLibrary() tea.Cmd {
 	}
 }
 
-func getTracklist(albumId string) []Song {
+func getTracklist(album *Album) []Song {
 	newTracklist := []Song{}
 
 	albumUrl := config.ServerUrl + "/rest/getAlbum?u=" + config.ServerUser +
-		"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + albumId
+		"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + album.id
 
 	result, err := http.Get(albumUrl)
 
@@ -276,24 +295,26 @@ func getTracklist(albumId string) []Song {
 	var list any
 	json.Unmarshal([]byte(resultBody), &list)
 
-	songsList, _ := list.(map[string]any)["subsonic-response"].(map[string]any)["album"].(map[string]any)["song"].([]any)
+	respSubsonic, _ := list.(map[string]any)["subsonic-response"]
+	respAlbum, _ := respSubsonic.(map[string]any)["album"]
+	respSongs, _ := respAlbum.(map[string]any)["song"].([]any)
 
-	for _, element := range songsList {
+	for _, element := range respSongs {
 		songId := element.(map[string]any)["id"].(string)
 		songTitle := element.(map[string]any)["title"].(string)
 		songArtist := element.(map[string]any)["artist"].(string)
 		songDuration := element.(map[string]any)["duration"].(float64)
 
-		log.Printf("%v", songDuration)
-
 		songUrl := config.ServerUrl + "/rest/download.view?u=" + config.ServerUser +
 			"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&f=json&id=" + songId
+
 		newSong := Song{
 			id:       songId,
 			url:      songUrl,
 			title:    songTitle,
 			artist:   songArtist,
 			duration: songDuration,
+			album:    album,
 		}
 
 		newTracklist = append(newTracklist, newSong)
@@ -328,19 +349,48 @@ func (l ModelLibrary) changeSelection(amount int) int {
 	return newSelection
 }
 
-func (l ModelLibrary) changePage(amount int) int {
-	newPage := l.currentPageNumber + amount
+// This is also used for dynamically changing the amount of rows/columns on
+// screen (It just changes the page by an amount of 0).
+func (l ModelLibrary) changePage(amount int) ModelLibrary {
+	// Get current album focused.
+	albumIndex := (l.currentPageNumber * (pageColumns * pageRows)) + l.selectedAlbum
 
+	// Calculate columns and rows.
 	pageColumns = int(math.Floor(float64(terminalWidth / (albumArtWidth + 4))))
-	pageRows = int(math.Floor(float64((terminalHeight - 4) / (albumArtHeight + 5))))
+	pageRows = int(math.Floor(float64((sizeMainHeight - 1) / (albumArtHeight + 5))))
 
-	if newPage > l.getPageAmount()-1 {
-		return int(math.Max(0, float64(l.getPageAmount()-1)))
-	} else if newPage < 0 {
-		return 0
+	// Switch to page with selected album.
+	l.currentPageNumber = int(math.Floor(
+		float64(albumIndex / (pageColumns * pageRows)),
+	))
+
+	l.selectedAlbum = albumIndex -
+		int(float64(l.currentPageNumber)*
+			float64(pageColumns*pageRows))
+
+	// Change page
+	l.currentPageNumber += amount
+
+	// Clamp pages
+	if l.currentPageNumber > l.getPageAmount()-1 {
+		l.currentPageNumber = int(math.Max(0, float64(l.getPageAmount()-1)))
+	} else if l.currentPageNumber < 0 {
+		l.currentPageNumber = 0
 	}
 
-	return newPage
+	// Get content
+	l.currentPageContent = l.getAlbumPage(l.currentPageNumber)
+
+	// Update selection if needed
+	l.selectedAlbum = int(math.Min(
+		math.Max(
+			float64(l.selectedAlbum),
+			0,
+		),
+		float64(len(l.currentPageContent)-1),
+	))
+
+	return l
 }
 
 func (l ModelLibrary) getPageAmount() int {

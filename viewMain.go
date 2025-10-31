@@ -5,11 +5,40 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-type focusedModel int
+var (
+	sizeStatusWidth  int
+	sizeStatusHeight int
+
+	sizeMainWidth  int
+	sizeMainHeight int
+
+	sizeControlsWidth  int
+	sizeControlsHeight int
+)
+
+var styleStatus = lipgloss.NewStyle().
+	Background(lipgloss.Color("15")).
+	Foreground(lipgloss.Color("0")).
+	AlignHorizontal(lipgloss.Left).
+	Padding(0, 1, 0, 1)
+
+type focusView int
+type focusModel int
 
 type ModelMain struct {
-	modelLibrary  tea.Model
 	modelControls tea.Model
+	modelLibrary  tea.Model
+	modelQueue    tea.Model
+}
+
+func initializeModelMain() ModelMain {
+	modelMain := ModelMain{
+		modelControls: initializeModelControls(),
+		modelLibrary:  initializeModelLibrary(),
+		modelQueue:    initializeModelQueue(),
+	}
+
+	return modelMain
 }
 
 func (m ModelMain) Init() tea.Cmd {
@@ -17,6 +46,7 @@ func (m ModelMain) Init() tea.Cmd {
 
 	cmds = append(cmds, awaitMpvEvent(objectPlayer.mpv))
 	cmds = append(cmds, m.modelLibrary.Init())
+	cmds = append(cmds, m.modelQueue.Init())
 
 	return tea.Batch(cmds...)
 }
@@ -30,51 +60,84 @@ func (m ModelMain) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		terminalWidth = msg.Width
 		terminalHeight = msg.Height
 
-		m.modelLibrary, cmd = m.modelLibrary.Update(msg)
-		cmds = append(cmds, cmd)
+		sizeControlsWidth = terminalWidth
+		sizeControlsHeight = 3
+
+		sizeStatusWidth = terminalWidth
+		sizeStatusHeight = 1
+
+		sizeMainWidth = terminalWidth
+		sizeMainHeight = terminalHeight - sizeStatusHeight - sizeControlsHeight
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c":
 			return m, tea.Quit
-		case "J":
-			currentFocus = focusPlayer
-			return m, nil
-		case "K":
-			currentFocus = focusLibrary
-			return m, nil
 		}
 
-		switch currentFocus {
+		switch focusedView {
 		case focusPlayer:
 			m.modelControls, cmd = m.modelControls.Update(msg)
 			cmds = append(cmds, cmd)
-		case focusLibrary:
-			m.modelLibrary, cmd = m.modelLibrary.Update(msg)
+		case focusMain:
+			switch focusedModel {
+			case focusLibrary:
+				m.modelLibrary, cmd = m.modelLibrary.Update(msg)
+			case focusQueue:
+				m.modelQueue, cmd = m.modelQueue.Update(msg)
+			}
 			cmds = append(cmds, cmd)
 		}
 
-	case msgMpvEvent:
-		m.modelControls, cmd = m.modelControls.Update(msg)
-		cmds = append(cmds, cmd)
-	case msgLibraryLoaded:
-		m.modelLibrary, cmd = m.modelLibrary.Update(msg)
-		cmds = append(cmds, cmd)
+		return m, tea.Batch(cmds...)
 	}
+
+	m.modelControls, cmd = m.modelControls.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.modelLibrary, cmd = m.modelLibrary.Update(msg)
+	cmds = append(cmds, cmd)
+
+	m.modelQueue, cmd = m.modelQueue.Update(msg)
+	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m ModelMain) View() string {
-	playerRender := m.modelControls.View()
-	libraryRender := m.modelLibrary.View()
+	styleMain := lipgloss.NewStyle().
+		MaxHeight(sizeMainHeight).
+		Height(sizeMainHeight).
+		MaxWidth(sizeMainWidth).
+		AlignVertical(lipgloss.Bottom)
 
-	statusRender := lipgloss.NewStyle().
-		Width(terminalWidth).
-		Background(lipgloss.Color("15")).
-		Foreground(lipgloss.Color("0")).
-		AlignHorizontal(lipgloss.Left).
-		Padding(0, 1, 0, 1).
-		Render("STATUS")
+	playerRender := m.modelControls.View()
+
+	statusString := ""
+
+	switch focusedView {
+	case focusMain:
+		switch focusedModel {
+		case focusLibrary:
+			statusString = "LIBRARY"
+		case focusQueue:
+			statusString = "QUEUE"
+		}
+	case focusPlayer:
+		statusString = "PLAYER"
+	}
+
+	statusRender := styleStatus.Width(sizeStatusWidth).Render(statusString)
+
+	mainRender := ""
+
+	switch focusedModel {
+	case focusLibrary:
+		mainRender = styleMain.Render(m.modelLibrary.View())
+	case focusQueue:
+		mainRender = styleMain.Render(m.modelQueue.View())
+	default:
+		mainRender = styleMain.Render("")
+	}
 
 	s := lipgloss.NewStyle().
 		Height(terminalHeight).
@@ -84,10 +147,7 @@ func (m ModelMain) View() string {
 			lipgloss.JoinVertical(
 				lipgloss.Center,
 				statusRender,
-				lipgloss.NewStyle().
-					Height(terminalHeight-4).
-					AlignVertical(lipgloss.Bottom).
-					Render(libraryRender),
+				mainRender,
 				playerRender,
 			),
 		)

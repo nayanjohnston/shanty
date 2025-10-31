@@ -15,16 +15,17 @@ type Song struct {
 	url      string
 	title    string
 	artist   string
+	album    *Album
 	id       string
 	duration float64
 }
 
 type Album struct {
-	id     string
-	art    []string
-	title  string
-	artist string
-	songs  []Song
+	id        string
+	art       []string
+	title     string
+	artist    string
+	tracklist []Song
 }
 
 type Queue struct {

@@ -8,8 +8,13 @@ import (
 )
 
 const (
-	focusPlayer focusedModel = iota
-	focusLibrary
+	focusPlayer focusView = iota
+	focusMain
+)
+
+const (
+	focusLibrary focusModel = iota
+	focusQueue
 )
 
 const (
@@ -21,7 +26,8 @@ var (
 	objectPlayer   PlayerManager
 	terminalWidth  int
 	terminalHeight int
-	currentFocus   focusedModel
+	focusedView    focusView
+	focusedModel   focusModel
 )
 
 func main() {
@@ -35,8 +41,6 @@ func main() {
 	// Create Player
 	objectPlayer = createPlayer()
 
-	// getAlbumPage(19)
-
 	// Setup bubbletea logging.
 	f, err := tea.LogToFile("debug.log", "debug")
 
@@ -49,16 +53,14 @@ func main() {
 	objectPlayer.loadSong(false)
 
 	p := tea.NewProgram(
-		ModelMain{
-			modelControls: initializeModelControls(),
-			modelLibrary:  initializeModelLibrary(),
-		},
+		initializeModelMain(),
 		tea.WithAltScreen(),
 	)
 
-	currentFocus = focusPlayer
+	focusedView = focusPlayer
+	focusedModel = focusQueue
 
-	if _, err = p.Run(); err != nil {
+	if _, err := p.Run(); err != nil {
 		panic(err)
 	}
 }
