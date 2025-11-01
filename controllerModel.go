@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -22,6 +23,7 @@ type msgQueueSong *Song
 type msgLoadSong struct{ playNow bool }
 type msgNextSong struct{}
 type msgPrevSong struct{}
+type msgRemoveFromQueue int
 
 // Model Initialisation
 func initControllerModel(queue *Queue) ControllerModel {
@@ -136,6 +138,9 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tea.Sequence(
 			func() tea.Msg { return msgLoadSong{playNow: true} },
 		))
+	case msgRemoveFromQueue:
+		pos := int(msg)
+		m.queue.queue = slices.Delete(m.queue.queue, pos, pos+1)
 
 	}
 

@@ -16,6 +16,8 @@ type QueueModel struct {
 	cursor int
 }
 
+type msgMoveCursor int
+
 func initQueueModel(queue *Queue) QueueModel {
 	return QueueModel{
 		queue: queue,
@@ -33,24 +35,28 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "j":
-			m.cursor += 1
+			cmds = append(cmds, func() tea.Msg { return msgMoveCursor(1) })
 		case "k":
-			m.cursor -= 1
+			cmds = append(cmds, func() tea.Msg { return msgMoveCursor(-1) })
+		case "d":
+			cmds = append(cmds, func() tea.Msg { return msgRemoveFromQueue(m.cursor) })
 		case "enter":
 			cmds = append(cmds, func() tea.Msg {
 				m.queue.currentSong = m.cursor
 				return msgLoadSong{playNow: true}
 			})
 		}
-	}
+	case msgMoveCursor:
+		m.cursor += int(msg)
 
-	if currentContentFocus == queueFocus {
 		if m.cursor < 0 {
 			m.cursor = 0
 		} else if m.cursor >= len(m.queue.queue) {
 			m.cursor = len(m.queue.queue) - 1
 		}
-	} else {
+	}
+
+	if currentContentFocus != queueFocus {
 		m.cursor = m.queue.currentSong
 	}
 
