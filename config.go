@@ -11,18 +11,14 @@ type ShantyConfig struct {
 	ServerPassword string
 }
 
-var config ShantyConfig
-
-func readConfig() error {
-	// Read config data
+func readConfig(conf *ShantyConfig) error {
+	// Read config data.
 	configData, err := os.ReadFile("config.toml")
-
 	if err != nil {
 		return err
 	}
 
-	// Convert toml to config object
-	err = toml.Unmarshal([]byte(configData), &config)
-
-	return nil
+	// Extract data to object.
+	err = toml.Unmarshal([]byte(configData), conf)
+	return err
 }
