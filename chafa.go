@@ -10,16 +10,22 @@ import (
 )
 
 var (
-	albumArtWidth  = 16
-	albumArtHeight = 5
+	albumArtWidth  = 20
+	albumArtHeight = 6
 )
 
 func imageArray(imageId string) ([]string, error) {
 	imageFile := "./.tmp/" + imageId + ".jpg"
 
 	if _, err := os.Stat(imageFile); err != nil {
-		imageUrl := config.ServerUrl + "/rest/getCoverArt?u=" + config.ServerUser +
-			"&p=" + config.ServerPassword + "&v=1.12.0&c=shanty&size=100&id=" + imageId
+		imageUrl := config.ServerUrl +
+			"/rest/getCoverArt?" +
+			"u=" + config.ServerUser +
+			"&p=" + config.ServerPassword +
+			"&v=1.12.0" +
+			"&c=shanty" +
+			"&size=100" +
+			"&id=" + imageId
 
 		imageResponse, err := http.Get(imageUrl)
 		if err != nil {
