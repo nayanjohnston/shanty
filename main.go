@@ -45,7 +45,8 @@ func main() {
 	config = &ShantyConfig{}
 	err := readConfig(config)
 	if err != nil {
-		panic(err)
+		fmt.Println("CONFIG FILE NOT FOUND!\nPlease create a config file in \"~/.config/shanty/config.toml\".")
+		return
 	}
 
 	// Setup bubbletea logging

@@ -12,8 +12,13 @@ type ShantyConfig struct {
 }
 
 func readConfig(conf *ShantyConfig) error {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+
 	// Read config data.
-	configData, err := os.ReadFile("config.toml")
+	configData, err := os.ReadFile(homeDir + "/.config/shanty/config.toml")
 	if err != nil {
 		return err
 	}
