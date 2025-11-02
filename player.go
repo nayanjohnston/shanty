@@ -49,6 +49,7 @@ func (s Song) getUrl() string {
 type Album struct {
 	title    string
 	artist   string
+	year     float64
 	songlist []*Song
 	artwork  []string
 	id       string

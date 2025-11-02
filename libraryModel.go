@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"math"
 	"net/http"
 
@@ -30,6 +31,10 @@ type msgUpdatedLibrarySize struct {
 }
 type msgChangePage int
 type msgChangeSelection int
+type msgSonglistLoaded struct {
+	album    *Album
+	songlist []*Song
+}
 
 func initLibraryModel(queue *Queue) LibraryModel {
 	return LibraryModel{
@@ -109,6 +114,8 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgLibraryLoaded:
 		m.library = *msg
 		m.loaded = true
+	case msgSonglistLoaded:
+		msg.album.songlist = msg.songlist
 	case msgChangePage:
 		m.currentPage += int(msg)
 		maxPages := int(math.Ceil(float64(len(m.library)) / float64(m.columns*m.rows)))
@@ -279,10 +286,9 @@ func getLibrary() tea.Cmd {
 					title:   element.(map[string]any)["title"].(string),
 					artist:  element.(map[string]any)["artist"].(string),
 					id:      element.(map[string]any)["id"].(string),
+					year:    element.(map[string]any)["year"].(float64),
 					artwork: albumArt,
 				}
-
-				newAlbum.songlist = getTracklist(&newAlbum)
 
 				newLibrary = append(newLibrary, newAlbum)
 			}
@@ -294,8 +300,13 @@ func getLibrary() tea.Cmd {
 	}
 }
 
-func getTracklist(album *Album) []*Song {
-	newTracklist := []*Song{}
+func getSonglist(album *Album) tea.Msg {
+	if len(album.songlist) > 0 {
+		return nil
+	}
+
+	log.Println("Getting songlist")
+	newSonglist := []*Song{}
 
 	albumUrl := config.ServerUrl +
 		"/rest/getAlbum?" +
@@ -334,9 +345,14 @@ func getTracklist(album *Album) []*Song {
 			album:    album,
 		}
 
-		newTracklist = append(newTracklist, &newSong)
+		newSonglist = append(newSonglist, &newSong)
 	}
-	return newTracklist
+
+	log.Println("Got songlist")
+	return msgSonglistLoaded{
+		album:    album,
+		songlist: newSonglist,
+	}
 }
 
 func renderAlbum(album *Album, isSelected bool) string {
@@ -347,7 +363,7 @@ func renderAlbum(album *Album, isSelected bool) string {
 
 	styleArtwork := lipgloss.NewStyle().
 		Width(albumArtWidth).
-		AlignHorizontal(lipgloss.Left)
+		AlignHorizontal(lipgloss.Center)
 
 	styleTitle := lipgloss.NewStyle().
 		Width(albumArtWidth).

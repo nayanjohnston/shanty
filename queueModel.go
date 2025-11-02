@@ -89,16 +89,7 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.queue.queue = append(m.queue.queue, msg)
 	}
 
-	// Ensure cursor is safe
-	if m.cursor < 0 {
-		m.cursor = 0
-	} else if m.cursor >= len(m.queue.queue) {
-		m.cursor = len(m.queue.queue) - 1
-	}
-
-	if currentContentFocus != queueFocus {
-		m.cursor = m.queue.currentSong
-	}
+	m.cursor = m.cursorClamp()
 
 	return m, tea.Batch(cmds...)
 }
@@ -227,4 +218,19 @@ func (m QueueModel) View() string {
 	}
 
 	return output
+}
+
+func (m QueueModel) cursorClamp() int {
+	// Ensure cursor is safe
+	if m.cursor < 0 {
+		m.cursor = 0
+	} else if m.cursor >= len(m.queue.queue) {
+		m.cursor = len(m.queue.queue) - 1
+	}
+
+	if currentContentFocus != queueFocus {
+		m.cursor = m.queue.currentSong
+	}
+
+	return m.cursor
 }

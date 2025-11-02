@@ -79,24 +79,28 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmd = func() tea.Msg { return msgMpvEvent(m.mpv.WaitEvent(10000)) }
 		cmds = append(cmds, cmd)
 	case msgLoadSong:
-		if len(m.queue.queue) != 0 {
-			// Clamp current song value to queue length
-			if m.queue.currentSong < 0 {
-				m.queue.currentSong = 0
-			} else if m.queue.currentSong > len(m.queue.queue)-1 {
-				m.queue.currentSong = len(m.queue.queue) - 1
-			}
-
-			// Load via mpv
-			m.mpv.Command([]string{
-				"loadfile",
-				m.queue.queue[m.queue.currentSong].getUrl(),
-			})
-
-			m.mpv.SetProperty("pause", mpv.FormatFlag, !msg.playNow)
+		if len(m.queue.queue) == 0 {
+			break
 		}
+
+		// Clamp current song value to queue length
+		if m.queue.currentSong < 0 {
+			m.queue.currentSong = 0
+		} else if m.queue.currentSong > len(m.queue.queue)-1 {
+			m.queue.currentSong = len(m.queue.queue) - 1
+		}
+
+		// Load via mpv
+		m.mpv.Command([]string{
+			"loadfile",
+			m.queue.queue[m.queue.currentSong].getUrl(),
+		})
+
+		m.mpv.SetProperty("pause", mpv.FormatFlag, !msg.playNow)
+
 	case msgNextSong:
 		shouldPlay := true
+
 		// If we're the last song in the queue, go to the first song and pause.
 		if m.queue.currentSong >= len(m.queue.queue)-1 {
 			m.queue.currentSong = 0
@@ -106,9 +110,9 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.queue.currentSong += 1
 		}
 
-		cmds = append(cmds, tea.Sequence(
-			func() tea.Msg { return msgLoadSong{playNow: shouldPlay} },
-		))
+		cmds = append(cmds, func() tea.Msg {
+			return msgLoadSong{playNow: shouldPlay}
+		})
 	case msgPrevSong:
 		property, _ := m.mpv.GetProperty("time-pos", mpv.FormatInt64)
 		position, _ := property.(int64)
@@ -119,9 +123,9 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		cmds = append(cmds, tea.Sequence(
-			func() tea.Msg { return msgLoadSong{playNow: true} },
-		))
+		cmds = append(cmds, func() tea.Msg {
+			return msgLoadSong{playNow: true}
+		})
 	case msgStopPlayback:
 		m.mpv.Command([]string{"stop"})
 	}

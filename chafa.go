@@ -51,10 +51,6 @@ func imageArray(imageId string) ([]string, error) {
 		fmt.Sprintf("%vx%v", albumArtWidth, albumArtHeight),
 		"-f",
 		"symbols",
-		"--align",
-		"hcenter",
-		"--view-size",
-		fmt.Sprintf("%vx%v", albumArtWidth, albumArtHeight),
 		imageFile,
 	).Output()
 
