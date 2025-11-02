@@ -48,12 +48,13 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case msgMoveCursor:
 		m.cursor += int(msg)
+	}
 
-		if m.cursor < 0 {
-			m.cursor = 0
-		} else if m.cursor >= len(m.queue.queue) {
-			m.cursor = len(m.queue.queue) - 1
-		}
+	// Ensure cursor is safe
+	if m.cursor < 0 {
+		m.cursor = 0
+	} else if m.cursor >= len(m.queue.queue) {
+		m.cursor = len(m.queue.queue) - 1
 	}
 
 	if currentContentFocus != queueFocus {

@@ -11,7 +11,7 @@ type ContentModel struct {
 
 func initContentModel(queue *Queue) ContentModel {
 	return ContentModel{
-		libraryModel: initLibraryModel(),
+		libraryModel: initLibraryModel(queue),
 		queueModel:   initQueueModel(queue),
 	}
 }
