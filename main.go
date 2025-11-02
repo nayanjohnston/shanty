@@ -25,6 +25,7 @@ const (
 
 	libraryFocus ContentFocus = iota
 	queueFocus
+	albumFocus
 )
 
 var (

@@ -100,7 +100,7 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, func() tea.Msg {
 				selectedAlbum := m.selection + (m.currentPage * (m.rows * m.columns))
 				if selectedAlbum >= 0 && selectedAlbum < len(m.library) {
-					return msgAddAlbumToQueue(&m.library[selectedAlbum])
+					return msgShowAlbum(&m.library[selectedAlbum])
 				} else {
 					return nil
 				}
@@ -136,8 +136,6 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		var sequence []tea.Cmd
-
-		//sequence = append(sequence, func() tea.Msg { return msgClearQueue{} })
 
 		for _, song := range msg.songlist {
 			sequence = append(sequence, func() tea.Msg {

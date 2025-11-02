@@ -1,4 +1,5 @@
 # Heirarchy
+```
 MainModel
 |-Shows All-> Status (Shows current status) (Not a model)
 |- - - - - -> ContentModel (Swaps between various screens)
@@ -6,3 +7,4 @@ MainModel
 |             |- - - - - - - -> AlbumModel
 |			  +- - - - - - - -> QueueModel
 +- - - - - -> ControllerModel (Controls Music)
+```

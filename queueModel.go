@@ -17,6 +17,9 @@ type QueueModel struct {
 }
 
 type msgMoveCursor int
+type msgClearQueue struct{}
+type msgQueueSong *Song
+type msgRemoveFromQueue int
 
 func initQueueModel(queue *Queue) QueueModel {
 	return QueueModel{
@@ -48,6 +51,42 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case msgMoveCursor:
 		m.cursor += int(msg)
+	case msgRemoveFromQueue:
+		// If playlist is empty, ignore...
+		if len(m.queue.queue) <= 0 {
+			break
+		}
+
+		// Get deletion postition
+		pos := int(msg)
+
+		// If we're deleting the currently playing song...
+		if pos == m.queue.currentSong {
+			// If last song, stop all playback.
+			if len(m.queue.queue) == 1 {
+				cmds = append(cmds, func() tea.Msg { return msgStopPlayback{} })
+			} else {
+				// If we're the last song in the queue, move back to avoid crash
+				if m.queue.currentSong == len(m.queue.queue)-1 {
+					m.queue.currentSong = len(m.queue.queue) - 2
+				}
+
+				cmds = append(cmds, func() tea.Msg { return msgLoadSong{playNow: true} })
+			}
+		} else { // If we're _not_ deleting current song...
+			// If we are deleting a song before it, move current position back.
+			if pos < m.queue.currentSong {
+				m.queue.currentSong -= 1
+			}
+		}
+
+		// Delete song
+		m.queue.queue = slices.Delete(m.queue.queue, pos, pos+1)
+	case msgClearQueue:
+		m.queue.queue = []*Song{}
+		m.queue.currentSong = 0
+	case msgQueueSong:
+		m.queue.queue = append(m.queue.queue, msg)
 	}
 
 	// Ensure cursor is safe

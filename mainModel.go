@@ -108,7 +108,14 @@ func (m MainModel) renderStatus() string {
 	case controllerFocus:
 		statusMessage = "Controller"
 	case contentFocus:
-		statusMessage = "Content"
+		switch currentContentFocus {
+		case libraryFocus:
+			statusMessage = "Library"
+		case queueFocus:
+			statusMessage = "Queue"
+		case albumFocus:
+			statusMessage = "Album"
+		}
 	}
 
 	return lipgloss.NewStyle().

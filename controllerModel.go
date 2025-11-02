@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -18,12 +17,9 @@ type ControllerModel struct {
 }
 
 type msgMpvEvent *mpv.Event
-type msgClearQueue struct{}
-type msgQueueSong *Song
 type msgLoadSong struct{ playNow bool }
 type msgNextSong struct{}
 type msgPrevSong struct{}
-type msgRemoveFromQueue int
 type msgStopPlayback struct{}
 
 // Model Initialisation
@@ -82,11 +78,6 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmd = func() tea.Msg { return msgMpvEvent(m.mpv.WaitEvent(10000)) }
 		cmds = append(cmds, cmd)
-	case msgClearQueue:
-		m.queue.queue = []*Song{}
-		m.queue.currentSong = 0
-	case msgQueueSong:
-		m.queue.queue = append(m.queue.queue, msg)
 	case msgLoadSong:
 		if len(m.queue.queue) != 0 {
 			// Clamp current song value to queue length
@@ -131,38 +122,6 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, tea.Sequence(
 			func() tea.Msg { return msgLoadSong{playNow: true} },
 		))
-	case msgRemoveFromQueue:
-		// If playlist is empty, ignore...
-		if len(m.queue.queue) <= 0 {
-			break
-		}
-
-		// Get deletion postition
-		pos := int(msg)
-
-		// If we're deleting the currently playing song...
-		if pos == m.queue.currentSong {
-			// If last song, stop all playback.
-			if len(m.queue.queue) == 1 {
-				cmds = append(cmds, func() tea.Msg { return msgStopPlayback{} })
-			} else { // Otherwise, play next song...
-				cmds = append(cmds, func() tea.Msg { return msgLoadSong{playNow: true} })
-			}
-		} else { // If we're _not_ deleting current song...
-			// If we are deleting a song before it, move current position back.
-			if pos <= m.queue.currentSong {
-				m.queue.currentSong -= 1
-			}
-		}
-
-		// Delete song
-		m.queue.queue = slices.Delete(m.queue.queue, pos, pos+1)
-
-		// If we deleted a song at the end, move current song backwards (stops
-		// out of bounds error).
-		if m.queue.currentSong >= len(m.queue.queue) {
-			m.queue.currentSong = len(m.queue.queue) - 1
-		}
 	case msgStopPlayback:
 		m.mpv.Command([]string{"stop"})
 	}
