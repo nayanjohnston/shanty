@@ -1,12 +1,19 @@
-![A pixellated, fuzzy image that says "Shanty" on the left. On the right is a boat with two fishermen with fishing rods, one with a boot on the hook. Below is a swarm of fish.](/assets/images/logo.png)
+<p align="center"><img src="/assets/images/logo.png"></p>
 
-A Navidrome music player for the Terminal, written in Go. Uses [MPV](https://github.com/mpv-player/mpv) for playing audio, [bubbletea](https://github.com/charmbracelet/bubbletea) for the TUI, and [chafa](https://github.com/hpjansson/chafa) for displaying images.
-## Installation
-### Requirements
-- chafa (For images)
-## Configuration
-Currently configuration is done via a "config.toml" in the directory the program is run.
-### Config Options
+<p align="center">A terminal music player for <a href="https://github.com/navidrome/navidrome">Navidrome</a>, written in Go + <a href="https://github.com/charmbracelet/bubbletea">Bubble Tea</a>! Includes album art in the terminal via <a href="https://github.com/hpjansson/chafa">chafa</a>.</p>
+
+
+
+<p align="center"><img src="/assets/images/screenshot-01.jpeg"></p>
+
+# Installation
+## Requirements
+To run shanty, you'll also need to install the following:
+- [chafa](https://github.com/hpjansson/chafa) (For image display)
+- [mpv](https://github.com/mpv-player/mpv) (For audio playback)
+# Configuration
+Configuration is require to run the program, and needs to be located at `~/.config/shanty/config.toml`.
+## Config Options
 
 | Option | Type | Description |
 | --- | --- | --- |
@@ -14,19 +21,42 @@ Currently configuration is done via a "config.toml" in the directory the program
 | serverUser | String | Username of Navidrome user. |
 | serverPassword | String | Password of Navidrome user.|
 
-## Usage
+# Usage
 
-| Focused | Keybind | Action |
-| --- | --- | --- |
-| N/A | ctrl+c | Exit shanty |
-| N/A | shift+j | Move focus down |
-| N/A | shift+k | Move focus up |
-| Controls | Spacebar | Toggle play/pause |
-| Controls | h | Go back 5 seconds |
-| Controls | l | Go forward 5 seconds |
-| Controls | j | Turn volume down by 5% |
-| Controls | k | Turn volume up by 5% |
-| Controls | n | Next track |
-| Controls | p | Previous track |
+## General
 
+| Keybind | Action |
+| --- | --- |
+| <kbd>Ctrl+c</kbd> | Exit shanty |
+| <kbd>Shift+j</kbd> | Move focus down |
+| <kbd>Shift+k</kbd> | Move focus up |
 
+## Controller
+
+| Keybind | Action |
+| --- | --- |
+| <kbd>Spacebar</kbd> | Toggle play/pause |
+| <kbd>h</kbd> | Go back 5 seconds |
+| <kbd>l</kbd> | Go forward 5 seconds |
+| <kbd>j</kbd> | Turn volume down by 5% |
+| <kbd>k</kbd> | Turn volume up by 5% |
+| <kbd>n</kbd> | Next track |
+| <kbd>p</kbd> | Previous track |
+
+## Library
+
+| Keybind | Action |
+| --- | --- |
+| <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> | Move selection|
+| <kbd>n</kbd> | Next page |
+| <kbd>p</kbd> | Previous page |
+| <kbd>Enter</kbd> | Select album |
+
+## Queue
+
+| Keybind | Action |
+| --- | --- |
+| <kbd>j</kbd> | Move selection down |
+| <kbd>k</kbd> | Move selection up |
+| <kbd>Enter</kbd> | Play selected song |
+| <kbd>d</kbd> | Remove selected song |
