@@ -57,6 +57,7 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		case " ":
 			m.mpv.Command([]string{"cycle", "pause"})
+			cmds = append(cmds, checkScrobble(&m, 0, false))
 		case "h":
 			m.mpv.Command([]string{"seek", "-5", "relative"})
 		case "l":
@@ -317,10 +318,10 @@ func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.
 			return nil
 		}
 
-		scrobbleThresh := float64(song.duration) / 2
-		scrobbleThresh = math.Min(scrobbleThresh, 240)
-
 		if submission {
+			scrobbleThresh := float64(song.duration) / 2
+			scrobbleThresh = math.Min(scrobbleThresh, 240)
+
 			if currentPos > scrobbleThresh {
 				log.Printf("Scrobbling!")
 
@@ -338,6 +339,13 @@ func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.
 				return msgSetScrobbled(true)
 			}
 		} else {
+			property, _ := m.mpv.GetProperty("pause", mpv.FormatFlag)
+			paused, _ := property.(bool)
+
+			if paused {
+				return nil
+			}
+
 			log.Printf("Sending nowPlaying")
 			http.Get(
 				config.ServerUrl +
@@ -349,7 +357,6 @@ func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.
 					"&f=json" +
 					"&id=" + song.id +
 					"&submission=False")
-			return msgSetScrobbled(false)
 		}
 
 		return nil

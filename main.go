@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"math"
+	"os"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -51,7 +52,9 @@ func main() {
 	}
 
 	// Setup bubbletea logging
-	f, err := tea.LogToFile("debug.log", "debug")
+	tempFolder := os.TempDir()
+
+	f, err := tea.LogToFile(tempFolder+"/shanty.log", "debug")
 	if err != nil {
 		panic(err)
 	}
