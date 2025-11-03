@@ -74,3 +74,11 @@ Configuration is required to run the program, and needs to be located at `~/.con
 | --- | --- |
 | <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> | Move selection |
 | <kbd>Enter</kbd> | Select current option (Selecting songs will add them to queue) |
+
+# Packages Used
+
+- [Bubble Tea](https://github.com/charmbracelet/bubbletea)
+- [Lip Gloss](https://github.com/charmbracelet/lipgloss)
+- [Bubbles](https://github.com/charmbracelet/bubbles)
+- [go-mpv](https://github.com/gen2brain/go-mpv)
+- [go-toml v2](https://github.com/pelletier/go-toml)
