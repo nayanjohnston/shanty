@@ -23,7 +23,7 @@ jobs:
     - name: Install mpv
       run: |
           sudo apt-get update
-          sudo apt-get install -y mpv
+          sudo apt-get install -y mpv libmpv-dev
 
     - name: Build
       run: go build -v ./...
