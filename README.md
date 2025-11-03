@@ -17,16 +17,16 @@ To run shanty, you'll also need to install the following:
 
 # Configuration
 
-Configuration is required to run the program, and needs to be located at `~/.config/shanty/config.toml`.
+Configuration is located at `~/.config/shanty/config.toml`. The program requires you to set `serverUrl`, `serverUser` and `serverPassword` to run.
 
 ## Config Options
 
-| Option | Type | Description |
-| --- | --- | --- |
-| `serverUrl` | String | The URL/IP that points to the navidrome server. |
-| `serverUser` | String | Username of Navidrome user. |
-| `serverPassword` | String | Password of Navidrome user.|
-| `shouldScrobble` | Bool | If songs should be scrobbled or not (defaults to true) |
+| Option | Type | Description | Default Value |
+| --- | --- | --- | --- |
+| `serverUrl` | String | The URL/IP that points to the navidrome server. | N/A |
+| `serverUser` | String | Username of Navidrome user. | N/A |
+| `serverPassword` | String | Password of Navidrome user.| N/A |
+| `shouldScrobble` | Bool | If songs should be scrobbled or not | True |
 
 # Usage
 
