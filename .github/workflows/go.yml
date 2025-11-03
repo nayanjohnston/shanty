@@ -21,7 +21,9 @@ jobs:
         go-version: '1.25.3'
 
     - name: Install mpv
-      run: sudo apt install -y mpv
+      run: |
+          sudo apt-get update
+          sudo apt-get install -y mpv
 
     - name: Build
       run: go build -v ./...
