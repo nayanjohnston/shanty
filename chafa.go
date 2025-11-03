@@ -15,7 +15,15 @@ var (
 )
 
 func imageArray(imageId string) ([]string, error) {
-	imageFile := "./.tmp/" + imageId + ".jpg"
+	cacheDir, err := os.UserCacheDir()
+
+	os.MkdirAll(cacheDir+"/shanty/art/", 0755)
+
+	if err != nil {
+		return nil, err
+	}
+
+	imageFile := cacheDir + "/shanty/art/" + imageId + ".jpg"
 
 	if _, err := os.Stat(imageFile); err != nil {
 		imageUrl := config.ServerUrl +
