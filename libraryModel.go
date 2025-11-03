@@ -1,12 +1,15 @@
 package main
 
 import (
+	"cmp"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"math"
 	"net/http"
+	"slices"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -295,6 +298,22 @@ func getLibrary() tea.Cmd {
 
 			currentPageNumber += 1
 		}
+
+		slices.SortFunc(newLibrary, func(a, b Album) int {
+			compareNames := cmp.Compare(
+				strings.ToLower(a.artist),
+				strings.ToLower(b.artist),
+			)
+
+			if compareNames == 0 {
+				return cmp.Compare(
+					a.year,
+					b.year,
+				)
+			} else {
+				return compareNames
+			}
+		})
 
 		return msgLibraryLoaded(&newLibrary)
 	}
