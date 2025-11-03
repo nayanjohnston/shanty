@@ -17,6 +17,10 @@ type QueueModel struct {
 }
 
 type msgMoveCursor int
+type msgMoveSong struct {
+	from int
+	to   int
+}
 type msgClearQueue struct{}
 type msgQueueSong *Song
 type msgRemoveFromQueue int
@@ -41,6 +45,20 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, func() tea.Msg { return msgMoveCursor(1) })
 		case "k":
 			cmds = append(cmds, func() tea.Msg { return msgMoveCursor(-1) })
+		case "ctrl+j":
+			cmds = append(cmds, func() tea.Msg {
+				return msgMoveSong{
+					from: m.cursor,
+					to:   m.cursor + 1,
+				}
+			})
+		case "ctrl+k":
+			cmds = append(cmds, func() tea.Msg {
+				return msgMoveSong{
+					from: m.cursor,
+					to:   m.cursor - 1,
+				}
+			})
 		case "d":
 			cmds = append(cmds, func() tea.Msg { return msgRemoveFromQueue(m.cursor) })
 		case "enter":
@@ -51,6 +69,35 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	case msgMoveCursor:
 		m.cursor += int(msg)
+	case msgMoveSong:
+		// If moving out of bounds, ignore
+		if msg.to < 0 || msg.to >= len(m.queue.queue) {
+			return m, nil
+		}
+
+		song := m.queue.queue[msg.from]
+
+		movePlaying := false
+
+		if m.queue.currentSong == msg.from {
+			m.queue.currentSong += msg.to - msg.from
+			movePlaying = true
+		}
+
+		m.queue.queue = slices.Delete(m.queue.queue, msg.from, msg.from+1)
+		m.queue.queue = slices.Insert(m.queue.queue, msg.to, song)
+
+		if !movePlaying {
+			if m.queue.currentSong >= msg.from {
+				m.queue.currentSong -= 1
+			}
+			if m.queue.currentSong >= msg.to {
+				m.queue.currentSong += 1
+			}
+		}
+
+		return m, func() tea.Msg { return msgMoveCursor(msg.to - msg.from) }
+
 	case msgRemoveFromQueue:
 		// If playlist is empty, ignore...
 		if len(m.queue.queue) <= 0 {
