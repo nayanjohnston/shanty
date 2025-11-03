@@ -65,6 +65,7 @@ Configuration is required to run the program, and needs to be located at `~/.con
 | Keybind | Action |
 | --- | --- |
 | <kbd>j</kbd> <kbd>k</kbd> | Move selection |
+| <kbd>ctrl+j</kbd> <kbd>ctrl+k</kbd> | Move selected song up/down in queue |
 | <kbd>Enter</kbd> | Play selected song |
 | <kbd>d</kbd> | Remove selected song |
 
