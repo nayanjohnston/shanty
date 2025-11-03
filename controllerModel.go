@@ -25,6 +25,7 @@ type msgLoadSong struct{ playNow bool }
 type msgNextSong struct{}
 type msgPrevSong struct{}
 type msgStopPlayback struct{}
+type msgSetScrobbled bool
 
 // Model Initialisation
 func initControllerModel(queue *Queue) ControllerModel {
@@ -74,9 +75,16 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch e.EventID {
 		case mpv.EventPropertyChange:
-			if !m.scrobble {
-				cmd = checkScrobble(&m, &e)
-				cmds = append(cmds, cmd)
+			prop := e.Property()
+			data, ok := prop.Data.(float64)
+
+			// Check property name/ok status
+			if prop.Name == "time-pos" && ok {
+				// Check if we've reached scrobbling theshold
+				if !m.scrobble && config.ShouldScrobble {
+					cmd = checkScrobble(&m, data, true)
+					cmds = append(cmds, cmd)
+				}
 			}
 		case mpv.EventEnd:
 			if e.EndFile().Reason == mpv.EndFileEOF {
@@ -108,7 +116,7 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.mpv.SetProperty("pause", mpv.FormatFlag, !msg.playNow)
 
 		m.scrobble = false
-		return m, sendScrobble(m.queue.queue[m.queue.currentSong].id, false)
+		return m, checkScrobble(&m, 0, false)
 
 	case msgNextSong:
 		shouldPlay := true
@@ -140,6 +148,8 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 	case msgStopPlayback:
 		m.mpv.Command([]string{"stop"})
+	case msgSetScrobbled:
+		m.scrobble = bool(msg)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -294,57 +304,54 @@ func (m ControllerModel) renderProgress(isFocused bool) string {
 	)
 }
 
-func sendScrobble(id string, submission bool) tea.Cmd {
+func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.Cmd {
 	return func() tea.Msg {
-		submit := "False"
-		if submission {
-			submit = "True"
-		}
-
-		_, err := http.Get(
-			config.ServerUrl +
-				"/rest/scrobble?" +
-				"u=" + config.ServerUser +
-				"&p=" + config.ServerPassword +
-				"&v=1.12.0" +
-				"&c=shanty" +
-				"&f=json" +
-				"&id=" + id +
-				"&submission=" + submit)
-
-		if err != nil {
+		if !config.ShouldScrobble {
 			return nil
 		}
 
-		return nil
-	}
-}
+		song := m.queue.queue[m.queue.currentSong]
 
-func checkScrobble(m *ControllerModel, e *mpv.Event) tea.Cmd {
-	if len(m.queue.queue) == 0 {
-		return nil
-	}
+		if song.duration < 30 {
+			m.scrobble = true
+			return nil
+		}
 
-	song := m.queue.queue[m.queue.currentSong]
-
-	if song.duration < 30 {
-		m.scrobble = true
-		return nil
-	}
-
-	prop := e.Property()
-	data, ok := prop.Data.(float64)
-
-	if prop.Name == "time-pos" && ok {
 		scrobbleThresh := float64(song.duration) / 2
 		scrobbleThresh = math.Min(scrobbleThresh, 240)
 
-		if data > scrobbleThresh {
-			m.scrobble = true
-			log.Printf("Scrobbled!")
-			return sendScrobble(song.id, true)
-		}
-	}
+		if submission {
+			if currentPos > scrobbleThresh {
+				log.Printf("Scrobbling!")
 
-	return nil
+				http.Get(
+					config.ServerUrl +
+						"/rest/scrobble?" +
+						"u=" + config.ServerUser +
+						"&p=" + config.ServerPassword +
+						"&v=1.12.0" +
+						"&c=shanty" +
+						"&f=json" +
+						"&id=" + song.id +
+						"&submission=True")
+
+				return msgSetScrobbled(true)
+			}
+		} else {
+			log.Printf("Sending nowPlaying")
+			http.Get(
+				config.ServerUrl +
+					"/rest/scrobble?" +
+					"u=" + config.ServerUser +
+					"&p=" + config.ServerPassword +
+					"&v=1.12.0" +
+					"&c=shanty" +
+					"&f=json" +
+					"&id=" + song.id +
+					"&submission=False")
+			return msgSetScrobbled(false)
+		}
+
+		return nil
+	}
 }

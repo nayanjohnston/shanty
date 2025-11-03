@@ -1,17 +1,22 @@
 package main
 
 import (
-	"github.com/pelletier/go-toml/v2"
 	"os"
+
+	"github.com/pelletier/go-toml/v2"
 )
 
 type ShantyConfig struct {
 	ServerUrl      string
 	ServerUser     string
 	ServerPassword string
+	ShouldScrobble bool
 }
 
 func readConfig(conf *ShantyConfig) error {
+	// Set defaults
+	conf.ShouldScrobble = true
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -25,5 +30,6 @@ func readConfig(conf *ShantyConfig) error {
 
 	// Extract data to object.
 	err = toml.Unmarshal([]byte(configData), conf)
+
 	return err
 }
