@@ -2,6 +2,9 @@ package main
 
 import (
 	"fmt"
+	"log"
+	"math"
+	"net/http"
 
 	"github.com/charmbracelet/bubbles/progress"
 	tea "github.com/charmbracelet/bubbletea"
@@ -14,6 +17,7 @@ type ControllerModel struct {
 	mpv         *mpv.Mpv
 	queue       *Queue
 	progressBar progress.Model
+	scrobble    bool
 }
 
 type msgMpvEvent *mpv.Event
@@ -21,6 +25,7 @@ type msgLoadSong struct{ playNow bool }
 type msgNextSong struct{}
 type msgPrevSong struct{}
 type msgStopPlayback struct{}
+type msgSetScrobbled bool
 
 // Model Initialisation
 func initControllerModel(queue *Queue) ControllerModel {
@@ -69,6 +74,18 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		var e mpv.Event = *msg
 
 		switch e.EventID {
+		case mpv.EventPropertyChange:
+			prop := e.Property()
+			data, ok := prop.Data.(float64)
+
+			// Check property name/ok status
+			if prop.Name == "time-pos" && ok {
+				// Check if we've reached scrobbling theshold
+				if !m.scrobble && config.ShouldScrobble {
+					cmd = checkScrobble(&m, data, true)
+					cmds = append(cmds, cmd)
+				}
+			}
 		case mpv.EventEnd:
 			if e.EndFile().Reason == mpv.EndFileEOF {
 				cmd = func() tea.Msg { return msgNextSong{} }
@@ -97,6 +114,9 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 
 		m.mpv.SetProperty("pause", mpv.FormatFlag, !msg.playNow)
+
+		m.scrobble = false
+		return m, checkScrobble(&m, 0, false)
 
 	case msgNextSong:
 		shouldPlay := true
@@ -128,6 +148,8 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 	case msgStopPlayback:
 		m.mpv.Command([]string{"stop"})
+	case msgSetScrobbled:
+		m.scrobble = bool(msg)
 	}
 
 	return m, tea.Batch(cmds...)
@@ -280,4 +302,56 @@ func (m ControllerModel) renderProgress(isFocused bool) string {
 			durationRender,
 		),
 	)
+}
+
+func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.Cmd {
+	return func() tea.Msg {
+		if !config.ShouldScrobble {
+			return nil
+		}
+
+		song := m.queue.queue[m.queue.currentSong]
+
+		if song.duration < 30 {
+			m.scrobble = true
+			return nil
+		}
+
+		scrobbleThresh := float64(song.duration) / 2
+		scrobbleThresh = math.Min(scrobbleThresh, 240)
+
+		if submission {
+			if currentPos > scrobbleThresh {
+				log.Printf("Scrobbling!")
+
+				http.Get(
+					config.ServerUrl +
+						"/rest/scrobble?" +
+						"u=" + config.ServerUser +
+						"&p=" + config.ServerPassword +
+						"&v=1.12.0" +
+						"&c=shanty" +
+						"&f=json" +
+						"&id=" + song.id +
+						"&submission=True")
+
+				return msgSetScrobbled(true)
+			}
+		} else {
+			log.Printf("Sending nowPlaying")
+			http.Get(
+				config.ServerUrl +
+					"/rest/scrobble?" +
+					"u=" + config.ServerUser +
+					"&p=" + config.ServerPassword +
+					"&v=1.12.0" +
+					"&c=shanty" +
+					"&f=json" +
+					"&id=" + song.id +
+					"&submission=False")
+			return msgSetScrobbled(false)
+		}
+
+		return nil
+	}
 }

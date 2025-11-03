@@ -28,6 +28,7 @@ Configuration is required to run the program, and needs to be located at `~/.con
 | `serverUrl` | String | The URL/IP that points to the navidrome server. |
 | `serverUser` | String | Username of Navidrome user. |
 | `serverPassword` | String | Password of Navidrome user.|
+| `shouldScrobble` | Bool | If songs should be scrobbled or not (defaults to true) |
 
 # Usage
 
