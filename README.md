@@ -2,8 +2,6 @@
 
 <p align="center">A terminal music player for <a href="https://github.com/navidrome/navidrome">Navidrome</a>, written in Go + <a href="https://github.com/charmbracelet/bubbletea">Bubble Tea</a>! Includes album art in the terminal via <a href="https://github.com/hpjansson/chafa">chafa</a>.</p>
 
-<p align="center"><img src="/assets/images/screenshot-01.jpeg"></p>
-
 # Notes
 
 - This is the first (actual) program I've written in Go, so the code is a nightmare and stability isn't guaranteed.
@@ -54,6 +52,8 @@ Configuration is required to run the program, and needs to be located at `~/.con
 
 ## Library
 
+<p align="center"><img src="/assets/images/screenshot-library.png"></p>
+
 | Keybind | Action |
 | --- | --- |
 | <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> | Move selection |
@@ -63,6 +63,8 @@ Configuration is required to run the program, and needs to be located at `~/.con
 
 ## Queue
 
+<p align="center"><img src="/assets/images/screenshot-queue.png"></p>
+
 | Keybind | Action |
 | --- | --- |
 | <kbd>j</kbd> <kbd>k</kbd> | Move selection |
@@ -71,6 +73,8 @@ Configuration is required to run the program, and needs to be located at `~/.con
 | <kbd>d</kbd> | Remove selected song |
 
 ## Album
+
+<p align="center"><img src="/assets/images/screenshot-album.png"></p>
 
 | Keybind | Action |
 | --- | --- |
