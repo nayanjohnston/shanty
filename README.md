@@ -2,28 +2,36 @@
 
 <p align="center">A terminal music player for <a href="https://github.com/navidrome/navidrome">Navidrome</a>, written in Go + <a href="https://github.com/charmbracelet/bubbletea">Bubble Tea</a>! Includes album art in the terminal via <a href="https://github.com/hpjansson/chafa">chafa</a>.</p>
 
-
-
 <p align="center"><img src="/assets/images/screenshot-01.jpeg"></p>
 
+# Notes
+
+- This is the first (actual) program I've written in Go, so the code is a nightmare and stability isn't guaranteed.
+- It currently only targets Linux (let's be honest, who else would want a music player in their terminal).
+
 # Installation
+
 ## Requirements
+
 To run shanty, you'll also need to install the following:
 - [chafa](https://github.com/hpjansson/chafa) (For image display)
 - [mpv](https://github.com/mpv-player/mpv) (For audio playback)
+
 # Configuration
-Configuration is require to run the program, and needs to be located at `~/.config/shanty/config.toml`.
+
+Configuration is required to run the program, and needs to be located at `~/.config/shanty/config.toml`.
+
 ## Config Options
 
 | Option | Type | Description |
 | --- | --- | --- |
-| serverUrl | String | The URL/IP that points to the navidrome server. |
-| serverUser | String | Username of Navidrome user. |
-| serverPassword | String | Password of Navidrome user.|
+| `serverUrl` | String | The URL/IP that points to the navidrome server. |
+| `serverUser` | String | Username of Navidrome user. |
+| `serverPassword` | String | Password of Navidrome user.|
 
 # Usage
 
-## General
+## Global
 
 | Keybind | Action |
 | --- | --- |
@@ -47,7 +55,7 @@ Configuration is require to run the program, and needs to be located at `~/.conf
 
 | Keybind | Action |
 | --- | --- |
-| <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> | Move selection|
+| <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> | Move selection |
 | <kbd>n</kbd> | Next page |
 | <kbd>p</kbd> | Previous page |
 | <kbd>Enter</kbd> | Select album |
@@ -56,7 +64,13 @@ Configuration is require to run the program, and needs to be located at `~/.conf
 
 | Keybind | Action |
 | --- | --- |
-| <kbd>j</kbd> | Move selection down |
-| <kbd>k</kbd> | Move selection up |
+| <kbd>j</kbd> <kbd>k</kbd> | Move selection |
 | <kbd>Enter</kbd> | Play selected song |
 | <kbd>d</kbd> | Remove selected song |
+
+## Album
+
+| Keybind | Action |
+| --- | --- |
+| <kbd>h</kbd> <kbd>j</kbd> <kbd>k</kbd> <kbd>l</kbd> | Move selection |
+| <kbd>Enter</kbd> | Select current option (Selecting songs will add them to queue) |
