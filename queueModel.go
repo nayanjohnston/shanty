@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"slices"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/table"
 )
 
-var topSongOfView int = 0
+var queueListTop int = 0
 
 type QueueModel struct {
 	queue  *Queue
@@ -96,15 +96,17 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m QueueModel) View() string {
 	if len(m.queue.queue) <= 0 {
-		return ""
+		return "No queue"
 	}
+
+	output := ""
+
+	// Setting static widths
 	trackNumberWidth := 5
 	durationWidth := 9
-
 	titleWidth := int(float64(contentWidth-
 		trackNumberWidth-
 		durationWidth) * 0.7)
-
 	artistWidth := contentWidth -
 		titleWidth -
 		trackNumberWidth -
@@ -125,97 +127,191 @@ func (m QueueModel) View() string {
 
 	styleDuration := lipgloss.NewStyle().
 		Width(durationWidth).
-		AlignHorizontal(lipgloss.Center).
+		AlignHorizontal(lipgloss.Right).
 		Padding(0, 1, 0, 0)
 
-	tracks := []string{}
+	// Table arrays
+	rows := [][]string{}           // Contains every row in table
+	heights := []int{}             // Contains heights of every row of table
+	styles := [][]lipgloss.Style{} // Contains styling of each row
 
-	output := lipgloss.NewStyle().
-		Background(lipgloss.Color("234")).
-		Render(lipgloss.JoinHorizontal(
-			lipgloss.Center,
-			styleTrackNumber.Render("No."),
-			styleTitle.Render("Title"),
-			styleArtist.Render("Artist"),
-			styleDuration.Render("Duration"),
-		))
+	// Create table
+	t := table.New().
+		Border(lipgloss.HiddenBorder()). // Don't display border
+		Headers("No.", "Title", "Artist", "Duration").
+		Width(contentWidth).
+		BorderTop(false).    // We
+		BorderLeft(false).   // don't
+		BorderBottom(false). // want
+		BorderRight(false).  // any
+		BorderColumn(false). // borders
+		BorderRow(false).    // please,
+		BorderHeader(false). // thanks
+		StyleFunc(func(row, col int) lipgloss.Style {
+			var style lipgloss.Style
 
-	for m.cursor < topSongOfView {
-		topSongOfView -= 1
+			// If we're the header, set the proper styling
+			if row < 0 {
+				switch col {
+				case 0:
+					style = styleTrackNumber
+				case 1:
+					style = styleTitle
+				case 2:
+					style = styleArtist
+				case 3:
+					style = styleDuration
+				}
+
+				// Darken header
+				style = style.
+					Background(lipgloss.Color("234"))
+
+				return style
+			}
+
+			// Get style for this row/column from styles array
+			style = styles[row][col]
+
+			// Alternate color of row.
+			if row%2 == 0 {
+				style = style.
+					Background(lipgloss.Color("235"))
+			} else {
+				style = style.
+					Background(lipgloss.Color("236"))
+			}
+
+			return style
+		})
+
+	if m.cursor < queueListTop && queueListTop > 0 {
+		queueListTop -= 1
 	}
 
-	spaceLeft := contentHeight - lipgloss.Height(output)
-	index := topSongOfView
+	spaceLeft := contentHeight - lipgloss.Height(t.Render())
+	index := queueListTop
 	isSpace := true
 
 	for isSpace {
-		if index >= len(m.queue.queue) {
+		// If we've reached end of queue, stop
+		if index == len(m.queue.queue) {
 			isSpace = false
 			continue
 		}
 
+		// Get current song
 		song := m.queue.queue[index]
 
-		styleRow := lipgloss.NewStyle()
+		// Create copys of styles in case of highlight
+		rowStyleTrackNumber := styleTrackNumber
+		rowStyleTitle := styleTitle
+		rowStyleArtist := styleArtist
+		rowStyleDuration := styleDuration
 
-		if m.queue.currentSong == index &&
-			currentContentFocus == queueFocus {
-			styleRow = styleRow.Foreground(colorFocus)
-		} else if m.cursor == index {
-			styleRow = styleRow.Foreground(colorFocusDim)
-		}
-
-		if math.Mod(float64(index), 2) == 0 {
-			styleRow = styleRow.
-				Background(lipgloss.Color("235"))
-		} else {
-			styleRow = styleRow.
-				Background(lipgloss.Color("236"))
-		}
-
+		// Outputs of table items
 		trackNumber := fmt.Sprintf("%v", index+1)
 		title := song.title
 		artist := song.artist
 		duration := intToTime(int(song.duration))
 
-		trackRender := styleRow.Render(
-			lipgloss.JoinHorizontal(
-				lipgloss.Top,
-				styleTrackNumber.Render(trackNumber),
-				styleTitle.Render(title),
-				styleArtist.Render(artist),
-				styleDuration.Render(duration),
-			))
+		if index == m.cursor && currentMainFocus == contentFocus {
+			rowStyleTrackNumber = rowStyleTrackNumber.Foreground(colorFocusDim)
+			rowStyleTitle = rowStyleTitle.Foreground(colorFocusDim)
+			rowStyleArtist = rowStyleArtist.Foreground(colorFocusDim)
+			rowStyleDuration = rowStyleDuration.Foreground(colorFocusDim)
+		}
 
-		spaceLeft -= lipgloss.Height(trackRender)
+		if m.queue.currentSong == index {
+			rowStyleTrackNumber = rowStyleTrackNumber.Foreground(colorFocus)
+			rowStyleTitle = rowStyleTitle.Foreground(colorFocus)
+			rowStyleArtist = rowStyleArtist.Foreground(colorFocus)
+			rowStyleDuration = rowStyleDuration.Foreground(colorFocus)
+		}
 
-		if spaceLeft < 0 {
+		// Create a fake output to get the hight of the row (this sucks)
+		rowEmulation := lipgloss.JoinHorizontal(
+			lipgloss.Left,
+			rowStyleTrackNumber.Render(trackNumber),
+			rowStyleTitle.Render(title),
+			rowStyleArtist.Render(artist),
+			rowStyleDuration.Render(duration),
+		)
+
+		// Remove that hight from the space left
+		spaceLeft -= lipgloss.Height(rowEmulation)
+
+		// If we're out of space...
+		if spaceLeft <= 0 {
+			// If cursor is ahead of current last song...
 			if m.cursor >= index {
-				newSpace := lipgloss.Height(trackRender)
+				// Create copy of space we need to regain
+				newSpace := lipgloss.Height(rowEmulation)
+
+				// While there's still space to regain...
 				for newSpace > 0 {
-					topSongOfView += 1
-					spaceLeft += lipgloss.Height(tracks[0])
-					newSpace -= lipgloss.Height(tracks[0])
-					tracks = slices.Delete(tracks, 0, 1)
+					// Move top index down
+					queueListTop += 1
+
+					spaceLeft += heights[0] // Regain space from first row
+					newSpace -= heights[0]  // Inverse for space to lose
+
+					// Remove first element (first row) of all arrays
+					heights = slices.Delete(heights, 0, 1)
+					rows = slices.Delete(rows, 0, 1)
+					styles = slices.Delete(styles, 0, 1)
 				}
-				tracks = append(tracks, trackRender)
+
+				// Add current row to list
+				rows = append(rows, []string{
+					trackNumber,
+					title,
+					artist,
+					duration,
+				})
+
+				styles = append(styles, []lipgloss.Style{
+					rowStyleTrackNumber,
+					rowStyleTitle,
+					rowStyleArtist,
+					rowStyleDuration,
+				})
+
+				heights = append(heights, lipgloss.Height(rowEmulation))
+
+				// Increase index
 				index += 1
 			} else {
+				// Cursor is in view, so just exit loop
 				isSpace = false
 			}
 		} else {
-			tracks = append(tracks, trackRender)
+			// We're not finished, so just add to list
+			rows = append(rows, []string{
+				trackNumber,
+				title,
+				artist,
+				duration,
+			})
+
+			styles = append(styles, []lipgloss.Style{
+				rowStyleTrackNumber,
+				rowStyleTitle,
+				rowStyleArtist,
+				rowStyleDuration,
+			})
+
+			heights = append(heights, lipgloss.Height(rowEmulation))
+
 			index += 1
 		}
 	}
 
-	for _, text := range tracks {
-		output = lipgloss.JoinVertical(
-			lipgloss.Center,
-			output,
-			text,
-		)
-	}
+	// Add rows to table
+	t.Rows(rows...)
+
+	// Render
+	output = t.Render()
 
 	return output
 }
