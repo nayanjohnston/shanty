@@ -10,11 +10,11 @@ type ContentModel struct {
 	albumModel   tea.Model
 }
 
-func initContentModel(queue *Queue) ContentModel {
+func initContentModel() ContentModel {
 	return ContentModel{
-		libraryModel: initLibraryModel(queue),
-		queueModel:   initQueueModel(queue),
-		albumModel:   initAlbumModel(queue),
+		libraryModel: initLibraryModel(),
+		queueModel:   initQueueModel(),
+		albumModel:   initAlbumModel(),
 	}
 }
 

@@ -12,7 +12,6 @@ import (
 var queueListTop int = 0
 
 type QueueModel struct {
-	queue  *Queue
 	cursor int
 }
 
@@ -25,10 +24,8 @@ type msgClearQueue struct{}
 type msgQueueSong *Song
 type msgRemoveFromQueue int
 
-func initQueueModel(queue *Queue) QueueModel {
-	return QueueModel{
-		queue: queue,
-	}
+func initQueueModel() QueueModel {
+	return QueueModel{}
 }
 
 func (m QueueModel) Init() tea.Cmd {
@@ -63,77 +60,28 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, func() tea.Msg { return msgRemoveFromQueue(m.cursor) })
 		case "enter":
 			cmds = append(cmds, func() tea.Msg {
-				m.queue.currentSong = m.cursor
+				globalQueue.currentSong = m.cursor
 				return msgLoadSong{playNow: true}
 			})
 		}
 	case msgMoveCursor:
 		m.cursor += int(msg)
 	case msgMoveSong:
-		// If moving out of bounds, ignore
-		if msg.to < 0 || msg.to >= len(m.queue.queue) {
-			return m, nil
-		}
-
-		song := m.queue.queue[msg.from]
-
-		movePlaying := false
-
-		if m.queue.currentSong == msg.from {
-			m.queue.currentSong += msg.to - msg.from
-			movePlaying = true
-		}
-
-		m.queue.queue = slices.Delete(m.queue.queue, msg.from, msg.from+1)
-		m.queue.queue = slices.Insert(m.queue.queue, msg.to, song)
-
-		if !movePlaying {
-			if m.queue.currentSong >= msg.from {
-				m.queue.currentSong -= 1
-			}
-			if m.queue.currentSong >= msg.to {
-				m.queue.currentSong += 1
-			}
-		}
-
+		globalQueue.moveSong(msg.from, msg.to)
 		return m, func() tea.Msg { return msgMoveCursor(msg.to - msg.from) }
-
 	case msgRemoveFromQueue:
-		// If playlist is empty, ignore...
-		if len(m.queue.queue) <= 0 {
-			break
+		prevSong := globalQueue.getCurrentSong()
+		globalQueue.removeSong(int(msg))
+
+		if len(globalQueue.songlist) == 0 {
+			cmds = append(cmds, func() tea.Msg { return msgStopPlayback{} })
+		} else if globalQueue.getCurrentSong() != prevSong {
+			cmds = append(cmds, func() tea.Msg { return msgLoadSong{playNow: true} })
 		}
-
-		// Get deletion postition
-		pos := int(msg)
-
-		// If we're deleting the currently playing song...
-		if pos == m.queue.currentSong {
-			// If last song, stop all playback.
-			if len(m.queue.queue) == 1 {
-				cmds = append(cmds, func() tea.Msg { return msgStopPlayback{} })
-			} else {
-				// If we're the last song in the queue, move back to avoid crash
-				if m.queue.currentSong == len(m.queue.queue)-1 {
-					m.queue.currentSong = len(m.queue.queue) - 2
-				}
-
-				cmds = append(cmds, func() tea.Msg { return msgLoadSong{playNow: true} })
-			}
-		} else { // If we're _not_ deleting current song...
-			// If we are deleting a song before it, move current position back.
-			if pos < m.queue.currentSong {
-				m.queue.currentSong -= 1
-			}
-		}
-
-		// Delete song
-		m.queue.queue = slices.Delete(m.queue.queue, pos, pos+1)
 	case msgClearQueue:
-		m.queue.queue = []*Song{}
-		m.queue.currentSong = 0
+		globalQueue.clearQueue()
 	case msgQueueSong:
-		m.queue.queue = append(m.queue.queue, msg)
+		globalQueue.addSong(msg)
 	}
 
 	m.cursor = m.cursorClamp()
@@ -142,7 +90,7 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m QueueModel) View() string {
-	if len(m.queue.queue) <= 0 {
+	if len(globalQueue.songlist) <= 0 {
 		return "No queue"
 	}
 
@@ -242,13 +190,13 @@ func (m QueueModel) View() string {
 
 	for isSpace {
 		// If we've reached end of queue, stop
-		if index == len(m.queue.queue) {
+		if index == len(globalQueue.songlist) {
 			isSpace = false
 			continue
 		}
 
 		// Get current song
-		song := m.queue.queue[index]
+		song := globalQueue.songlist[index]
 
 		// Create copys of styles in case of highlight
 		rowStyleTrackNumber := styleTrackNumber
@@ -269,7 +217,7 @@ func (m QueueModel) View() string {
 			rowStyleDuration = rowStyleDuration.Foreground(colorFocusDim)
 		}
 
-		if m.queue.currentSong == index {
+		if globalQueue.currentSong == index {
 			rowStyleTrackNumber = rowStyleTrackNumber.Foreground(colorFocus)
 			rowStyleTitle = rowStyleTitle.Foreground(colorFocus)
 			rowStyleArtist = rowStyleArtist.Foreground(colorFocus)
@@ -367,12 +315,12 @@ func (m QueueModel) cursorClamp() int {
 	// Ensure cursor is safe
 	if m.cursor < 0 {
 		m.cursor = 0
-	} else if m.cursor >= len(m.queue.queue) {
-		m.cursor = len(m.queue.queue) - 1
+	} else if m.cursor >= len(globalQueue.songlist) {
+		m.cursor = len(globalQueue.songlist) - 1
 	}
 
 	if currentContentFocus != queueFocus {
-		m.cursor = m.queue.currentSong
+		m.cursor = globalQueue.currentSong
 	}
 
 	return m.cursor

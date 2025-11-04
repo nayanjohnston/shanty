@@ -16,14 +16,9 @@ type msgMainChangeFocus tea.Model
 
 // Model Initialisation
 func initMainModel() MainModel {
-	newQueue := Queue{
-		currentSong: 0,
-	}
-
 	mainModel := MainModel{
-		controllerModel: initControllerModel(&newQueue),
-		contentModel:    initContentModel(&newQueue),
-		queue:           &newQueue,
+		controllerModel: initControllerModel(),
+		contentModel:    initContentModel(),
 	}
 
 	return mainModel
