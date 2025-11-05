@@ -67,7 +67,11 @@ type Queue struct {
 }
 
 func (q *Queue) getCurrentSong() *Song {
-	return q.songlist[q.currentSong]
+	if len(q.songlist) != 0 {
+		return q.songlist[q.currentSong]
+	} else {
+		return nil
+	}
 }
 
 func (q *Queue) addSong(song *Song) {
