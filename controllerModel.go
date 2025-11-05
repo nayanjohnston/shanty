@@ -14,8 +14,6 @@ import (
 
 // Model Definition
 type ControllerModel struct {
-	mpv         *mpv.Mpv
-	queue       *Queue
 	progressBar progress.Model
 	scrobble    bool
 }
@@ -28,14 +26,12 @@ type msgStopPlayback struct{}
 type msgSetScrobbled bool
 
 // Model Initialisation
-func initControllerModel(queue *Queue) ControllerModel {
+func initControllerModel() ControllerModel {
 	newProgressBar := progress.New()
 	newProgressBar.ShowPercentage = false
 
 	controllerModel := ControllerModel{
-		mpv:         initMpv(),
 		progressBar: newProgressBar,
-		queue:       queue,
 	}
 
 	return controllerModel
@@ -44,7 +40,7 @@ func initControllerModel(queue *Queue) ControllerModel {
 // Tea Model Functions
 func (m ControllerModel) Init() tea.Cmd {
 	return tea.Batch(
-		func() tea.Msg { return msgMpvEvent(m.mpv.WaitEvent(10000)) },
+		func() tea.Msg { return msgMpvEvent(globalMpv.WaitEvent(10000)) },
 	)
 }
 
@@ -56,16 +52,16 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case " ":
-			m.mpv.Command([]string{"cycle", "pause"})
+			globalMpv.Command([]string{"cycle", "pause"})
 			cmds = append(cmds, checkScrobble(&m, 0, false))
 		case "h":
-			m.mpv.Command([]string{"seek", "-5", "relative"})
+			globalMpv.Command([]string{"seek", "-5", "relative"})
 		case "l":
-			m.mpv.Command([]string{"seek", "5", "relative"})
+			globalMpv.Command([]string{"seek", "5", "relative"})
 		case "k":
-			m.mpv.Command([]string{"add", "volume", "5"})
+			globalMpv.Command([]string{"add", "volume", "5"})
 		case "j":
-			m.mpv.Command([]string{"add", "volume", "-5"})
+			globalMpv.Command([]string{"add", "volume", "-5"})
 		case "n":
 			cmds = append(cmds, func() tea.Msg { return msgNextSong{} })
 		case "p":
@@ -94,27 +90,21 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		cmd = func() tea.Msg { return msgMpvEvent(m.mpv.WaitEvent(10000)) }
+		cmd = func() tea.Msg { return msgMpvEvent(globalMpv.WaitEvent(10000)) }
 		cmds = append(cmds, cmd)
 	case msgLoadSong:
-		if len(m.queue.queue) == 0 {
+		// Ignore if songlist is empty.
+		if len(globalQueue.songlist) == 0 {
 			break
 		}
 
-		// Clamp current song value to queue length
-		if m.queue.currentSong < 0 {
-			m.queue.currentSong = 0
-		} else if m.queue.currentSong > len(m.queue.queue)-1 {
-			m.queue.currentSong = len(m.queue.queue) - 1
-		}
-
 		// Load via mpv
-		m.mpv.Command([]string{
+		globalMpv.Command([]string{
 			"loadfile",
-			m.queue.queue[m.queue.currentSong].getUrl(),
+			globalQueue.getCurrentSong().getUrl(),
 		})
 
-		m.mpv.SetProperty("pause", mpv.FormatFlag, !msg.playNow)
+		globalMpv.SetProperty("pause", mpv.FormatFlag, !msg.playNow)
 
 		m.scrobble = false
 		return m, checkScrobble(&m, 0, false)
@@ -123,32 +113,30 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		shouldPlay := true
 
 		// If we're the last song in the queue, go to the first song and pause.
-		if m.queue.currentSong >= len(m.queue.queue)-1 {
-			m.queue.currentSong = 0
+		if globalQueue.currentSong >= len(globalQueue.songlist)-1 {
+			globalQueue.currentSong = 0
 			shouldPlay = false
 		} else {
 			// Otherwise, go forward a song and reload.
-			m.queue.currentSong += 1
+			globalQueue.updatePosition(1)
 		}
 
 		cmds = append(cmds, func() tea.Msg {
 			return msgLoadSong{playNow: shouldPlay}
 		})
 	case msgPrevSong:
-		property, _ := m.mpv.GetProperty("time-pos", mpv.FormatInt64)
+		property, _ := globalMpv.GetProperty("time-pos", mpv.FormatInt64)
 		position, _ := property.(int64)
 
-		if position <= 5 {
-			if m.queue.currentSong > 0 {
-				m.queue.currentSong -= 1
-			}
+		if position <= 5 && globalQueue.currentSong > 0 {
+			globalQueue.updatePosition(-1)
 		}
 
 		cmds = append(cmds, func() tea.Msg {
 			return msgLoadSong{playNow: true}
 		})
 	case msgStopPlayback:
-		m.mpv.Command([]string{"stop"})
+		globalMpv.Command([]string{"stop"})
 	case msgSetScrobbled:
 		m.scrobble = bool(msg)
 	}
@@ -165,9 +153,9 @@ func (m ControllerModel) View() string {
 
 	infoString := ""
 
-	if len(m.queue.queue) > 0 {
-		infoString = m.queue.queue[m.queue.currentSong].title +
-			" - " + m.queue.queue[m.queue.currentSong].artist
+	if len(globalQueue.songlist) > 0 {
+		infoString = globalQueue.getCurrentSong().title +
+			" - " + globalQueue.getCurrentSong().artist
 	} else {
 		infoString = "No Song Playing!"
 	}
@@ -204,10 +192,10 @@ func (m ControllerModel) renderInfo(info string, isFocused bool) string {
 func (m ControllerModel) renderStatus(isFocused bool) string {
 	width := terminalWidth - 22
 
-	property, _ := m.mpv.GetProperty("pause", mpv.FormatFlag)
+	property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
 	paused, _ := property.(bool)
 
-	property, _ = m.mpv.GetProperty("volume", mpv.FormatInt64)
+	property, _ = globalMpv.GetProperty("volume", mpv.FormatInt64)
 	volume, _ := property.(int64)
 
 	icon := " "
@@ -262,13 +250,13 @@ func (m ControllerModel) renderStatus(isFocused bool) string {
 }
 
 func (m ControllerModel) renderProgress(isFocused bool) string {
-	property, _ := m.mpv.GetProperty("duration", mpv.FormatInt64)
+	property, _ := globalMpv.GetProperty("duration", mpv.FormatInt64)
 	duration, _ := property.(int64)
 
-	property, _ = m.mpv.GetProperty("time-pos", mpv.FormatInt64)
+	property, _ = globalMpv.GetProperty("time-pos", mpv.FormatInt64)
 	position, _ := property.(int64)
 
-	property, _ = m.mpv.GetProperty("percent-pos", mpv.FormatDouble)
+	property, _ = globalMpv.GetProperty("percent-pos", mpv.FormatDouble)
 	percentPos, _ := property.(float64)
 
 	styleProgress := lipgloss.NewStyle().
@@ -311,7 +299,7 @@ func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.
 			return nil
 		}
 
-		song := m.queue.queue[m.queue.currentSong]
+		song := globalQueue.getCurrentSong()
 
 		if song.duration < 30 {
 			m.scrobble = true
@@ -339,7 +327,7 @@ func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.
 				return msgSetScrobbled(true)
 			}
 		} else {
-			property, _ := m.mpv.GetProperty("pause", mpv.FormatFlag)
+			property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
 			paused, _ := property.(bool)
 
 			if paused {

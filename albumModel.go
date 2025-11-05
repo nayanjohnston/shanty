@@ -18,7 +18,6 @@ type AlbumOption struct {
 
 type AlbumModel struct {
 	album          *Album
-	queue          *Queue
 	focusedOnList  bool
 	options        []AlbumOption
 	optionSelected int
@@ -28,9 +27,8 @@ type AlbumModel struct {
 type msgShowAlbum *Album
 type msgAlbumViewSelect struct{}
 
-func initAlbumModel(queue *Queue) AlbumModel {
+func initAlbumModel() AlbumModel {
 	albumModel := AlbumModel{
-		queue:          queue,
 		focusedOnList:  false,
 		optionSelected: 0,
 		cursor:         0,
@@ -96,7 +94,7 @@ func (m AlbumModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds := []tea.Cmd{func() tea.Msg { return msgQueueSong(m.album.songlist[m.cursor]) }}
 
 			// If nothing is in the queue, just start playing.
-			if len(m.queue.queue) <= 0 {
+			if len(globalQueue.songlist) == 0 {
 				cmds = append(cmds, func() tea.Msg { return msgLoadSong{playNow: true} })
 			}
 
@@ -322,8 +320,8 @@ func (m AlbumModel) renderSonglist(listWidth int, listHeight int) string {
 		}
 
 		// Highlight currently playing song in bright color
-		if len(m.queue.queue) > 0 {
-			if song == m.queue.queue[m.queue.currentSong] {
+		if len(globalQueue.songlist) > 0 {
+			if song == globalQueue.getCurrentSong() {
 				rowPosStyle = rowPosStyle.Foreground(colorFocus)
 				rowTimeStyle = rowTimeStyle.Foreground(colorFocus)
 				rowSongStyle = rowSongStyle.Foreground(colorFocus)

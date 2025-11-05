@@ -22,7 +22,6 @@ type LibraryModel struct {
 	columns     int
 	currentPage int
 	selection   int
-	queue       *Queue
 }
 
 type msgLibraryLoaded *[]Album
@@ -39,12 +38,11 @@ type msgSonglistLoaded struct {
 	songlist []*Song
 }
 
-func initLibraryModel(queue *Queue) LibraryModel {
+func initLibraryModel() LibraryModel {
 	return LibraryModel{
 		loaded:      false,
 		currentPage: 0,
 		selection:   0,
-		queue:       queue,
 	}
 }
 
@@ -154,7 +152,7 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// If nothing is in the queue, just start playing.
-		if len(m.queue.queue) <= 0 {
+		if len(globalQueue.songlist) == 0 {
 			sequence = append(sequence, func() tea.Msg { return msgLoadSong{playNow: true} })
 		}
 
