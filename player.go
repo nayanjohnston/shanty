@@ -102,13 +102,13 @@ func (q *Queue) moveSong(from int, to int) {
 	song := q.songlist[from]
 
 	// Update current position.
-	if q.currentSong == from {
+	if from == q.currentSong {
 		q.updatePosition(to - from)
 	} else {
 		if from < q.currentSong {
 			q.updatePosition(-1)
 		}
-		if to < q.currentSong {
+		if to <= q.currentSong {
 			q.updatePosition(1)
 		}
 	}
