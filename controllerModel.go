@@ -12,10 +12,19 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
+type LoopMode int
+
+const (
+	loopNone LoopMode = iota
+	loopQueue
+	loopSong
+)
+
 // Model Definition
 type ControllerModel struct {
 	progressBar progress.Model
 	scrobble    bool
+	loopMode    LoopMode
 }
 
 type msgMpvEvent *mpv.Event
@@ -24,6 +33,7 @@ type msgNextSong struct{}
 type msgPrevSong struct{}
 type msgStopPlayback struct{}
 type msgSetScrobbled bool
+type msgSwitchLoopMode struct{}
 
 // Model Initialisation
 func initControllerModel() ControllerModel {
@@ -32,6 +42,7 @@ func initControllerModel() ControllerModel {
 
 	controllerModel := ControllerModel{
 		progressBar: newProgressBar,
+		loopMode:    loopNone,
 	}
 
 	return controllerModel
@@ -66,6 +77,8 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			cmds = append(cmds, func() tea.Msg { return msgNextSong{} })
 		case "p":
 			cmds = append(cmds, func() tea.Msg { return msgPrevSong{} })
+		case "r":
+			cmds = append(cmds, func() tea.Msg { return msgSwitchLoopMode{} })
 		}
 	case msgMpvEvent:
 		var e mpv.Event = *msg
@@ -112,13 +125,24 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgNextSong:
 		shouldPlay := true
 
-		// If we're the last song in the queue, go to the first song and pause.
-		if globalQueue.currentSong >= len(globalQueue.songlist)-1 {
-			globalQueue.currentSong = 0
-			shouldPlay = false
-		} else {
-			// Otherwise, go forward a song and reload.
-			globalQueue.updatePosition(1)
+		switch m.loopMode {
+		case loopNone:
+			// If we're the last song in the queue, go to the first song and pause.
+			if globalQueue.currentSong >= len(globalQueue.songlist)-1 {
+				globalQueue.currentSong = 0
+				shouldPlay = false
+			} else {
+				globalQueue.updatePosition(1)
+			}
+		case loopQueue:
+			// If we're the last song in the queue, go to the first song.
+			if globalQueue.currentSong >= len(globalQueue.songlist)-1 {
+				globalQueue.currentSong = 0
+			} else {
+				globalQueue.updatePosition(1)
+			}
+		case loopSong:
+			// Do nothing.
 		}
 
 		cmds = append(cmds, func() tea.Msg {
@@ -139,6 +163,15 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		globalMpv.Command([]string{"stop"})
 	case msgSetScrobbled:
 		m.scrobble = bool(msg)
+	case msgSwitchLoopMode:
+		switch m.loopMode {
+		case loopNone:
+			m.loopMode = loopQueue
+		case loopQueue:
+			m.loopMode = loopSong
+		case loopSong:
+			m.loopMode = loopNone
+		}
 	}
 
 	return m, tea.Batch(cmds...)
@@ -198,16 +231,25 @@ func (m ControllerModel) renderStatus(isFocused bool) string {
 	property, _ = globalMpv.GetProperty("volume", mpv.FormatInt64)
 	volume, _ := property.(int64)
 
-	icon := " "
+	volumeIcon := " "
 
 	if volume <= 33 {
-		icon = " "
+		volumeIcon = " "
 	} else if volume <= 66 {
-		icon = " "
+		volumeIcon = " "
 	}
 
-	leftText := ""
-	rightText := fmt.Sprintf("%v %v%%", icon, volume)
+	loopIcon := "󰑗 "
+
+	switch m.loopMode {
+	case loopQueue:
+		loopIcon = "󰑖 "
+	case loopSong:
+		loopIcon = "󰑘 "
+	}
+
+	leftText := loopIcon
+	rightText := fmt.Sprintf("%v %v%%", volumeIcon, volume)
 	centerText := "|>"
 
 	if paused {
