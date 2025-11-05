@@ -52,12 +52,13 @@ func (s Song) getUrl() string {
 
 // Album Definition
 type Album struct {
-	title    string
-	artist   string
-	year     float64
-	songlist []*Song
-	artwork  []string
-	id       string
+	title     string
+	artist    string
+	year      float64
+	songlist  []*Song
+	artwork   []string
+	artworkId string
+	id        string
 }
 
 type Queue struct {

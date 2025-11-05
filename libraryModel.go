@@ -37,6 +37,7 @@ type msgSonglistLoaded struct {
 	album    *Album
 	songlist []*Song
 }
+type msgArtworkLoaded struct{}
 
 func initLibraryModel() LibraryModel {
 	return LibraryModel{
@@ -115,6 +116,15 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case msgLibraryLoaded:
 		m.library = *msg
 		m.loaded = true
+
+		for index, element := range m.library {
+			cmds = append(cmds, func() tea.Msg {
+				newArt, _ := imageArray(element.artworkId)
+				m.library[index].artwork = newArt
+				return msgArtworkLoaded{}
+			})
+		}
+		return m, tea.Sequence(cmds...)
 	case msgSonglistLoaded:
 		msg.album.songlist = msg.songlist
 	case msgChangePage:
@@ -278,17 +288,14 @@ func getLibrary() tea.Cmd {
 
 			for _, element := range respAlbums {
 				albumArtUrl := element.(map[string]any)["coverArt"].(string)
-				albumArt, err := imageArray(albumArtUrl)
-				if err != nil {
-					return msgErrorReadingLibrary(err)
-				}
 
 				newAlbum := Album{
-					title:   element.(map[string]any)["title"].(string),
-					artist:  element.(map[string]any)["artist"].(string),
-					id:      element.(map[string]any)["id"].(string),
-					year:    element.(map[string]any)["year"].(float64),
-					artwork: albumArt,
+					title:     element.(map[string]any)["title"].(string),
+					artist:    element.(map[string]any)["artist"].(string),
+					id:        element.(map[string]any)["id"].(string),
+					year:      element.(map[string]any)["year"].(float64),
+					artworkId: albumArtUrl,
+					artwork:   []string{},
 				}
 
 				newLibrary = append(newLibrary, newAlbum)
@@ -380,6 +387,7 @@ func renderAlbum(album *Album, isSelected bool) string {
 
 	styleArtwork := lipgloss.NewStyle().
 		Width(albumArtWidth).
+		Height(albumArtHeight).
 		AlignHorizontal(lipgloss.Center)
 
 	styleTitle := lipgloss.NewStyle().
@@ -409,9 +417,15 @@ func renderAlbum(album *Album, isSelected bool) string {
 			BorderForeground(colorFocus)
 	}
 
+	drawnArtwork := ""
+
+	if len(album.artwork) != 0 {
+		drawnArtwork = drawImage(album.artwork)
+	}
+
 	return styleAlbum.Render(
 		lipgloss.JoinVertical(lipgloss.Center,
-			styleArtwork.Render(drawImage(album.artwork)),
+			styleArtwork.Render(drawnArtwork),
 			renderTitle,
 			styleArtist.Render(album.artist),
 		))

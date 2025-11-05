@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -16,14 +17,24 @@ var (
 
 func imageArray(imageId string) ([]string, error) {
 	cacheDir, err := os.UserCacheDir()
-
-	os.MkdirAll(cacheDir+"/shanty/art/", 0755)
-
 	if err != nil {
 		return nil, err
 	}
 
+	os.MkdirAll(cacheDir+"/shanty/art/", 0755)
+
 	imageFile := cacheDir + "/shanty/art/" + imageId + ".jpg"
+	textFile := cacheDir + "/shanty/art/" + imageId + ".txt"
+
+	// File exists, just give them that.
+	if _, err := os.Stat(textFile); err == nil {
+		returnText, err := os.ReadFile(textFile)
+		if err != nil {
+			return nil, err
+		}
+		splitString := strings.Split(string(returnText), "\n")
+		return splitString[:len(splitString)-1], nil
+	}
 
 	if _, err := os.Stat(imageFile); err != nil {
 		imageUrl := config.ServerUrl +
@@ -62,11 +73,18 @@ func imageArray(imageId string) ([]string, error) {
 		imageFile,
 	).Output()
 
-	chafaOutput := string(chafaCommand)
-
+	file, err := os.Create(textFile)
 	if err != nil {
 		return nil, err
 	}
+	defer file.Close()
+
+	_, err = io.Copy(file, bytes.NewReader(chafaCommand))
+	if err != nil {
+		return nil, err
+	}
+
+	chafaOutput := string(chafaCommand)
 
 	splitString := strings.Split(chafaOutput, "\n")
 	return splitString[:len(splitString)-1], nil
