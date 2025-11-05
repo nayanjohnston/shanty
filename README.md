@@ -49,6 +49,7 @@ Configuration is located at `~/.config/shanty/config.toml`. The program requires
 | <kbd>k</kbd> | Turn volume up by 5% |
 | <kbd>n</kbd> | Next track |
 | <kbd>p</kbd> | Previous track |
+| <kbd>r</kbd> | Cycle looping mode |
 
 ## Library
 
