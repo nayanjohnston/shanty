@@ -77,6 +77,9 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch msg.String() {
+		case "s":
+			currentContentFocus = sortFocus
+
 		case "n":
 			return m, func() tea.Msg {
 				return msgChangePage(1)

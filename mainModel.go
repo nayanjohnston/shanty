@@ -110,6 +110,8 @@ func (m MainModel) renderStatus() string {
 			statusMessage = "Queue"
 		case albumFocus:
 			statusMessage = "Album"
+		case sortFocus:
+			statusMessage = "Sort"
 		}
 	}
 

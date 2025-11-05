@@ -5,6 +5,7 @@ MainModel
 |- - - - - -> ContentModel (Swaps between various screens)
 |             |-Swaps Between-> LibraryModel
 |             |- - - - - - - -> AlbumModel
+              |                 |- - - - -> SortModel
 |			  +- - - - - - - -> QueueModel
 +- - - - - -> ControllerModel (Controls Music)
 ```
