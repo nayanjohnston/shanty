@@ -49,7 +49,7 @@ func initLibraryModel() LibraryModel {
 
 func (m LibraryModel) Init() tea.Cmd {
 	return tea.Batch(
-		getLibrary(),
+		getLibrary("alphabeticalByArtist"),
 	)
 }
 
@@ -243,7 +243,7 @@ func (m LibraryModel) View() string {
 	)
 }
 
-func getLibrary() tea.Cmd {
+func getLibrary(sortMethod string) tea.Cmd {
 	return func() tea.Msg {
 		maxSize := 500
 		currentPageNumber := 0
@@ -263,7 +263,7 @@ func getLibrary() tea.Cmd {
 					"&v=1.12.0" +
 					"&c=shanty" +
 					"&f=json" +
-					"&type=alphabeticalByArtist" +
+					"&type=" + sortMethod +
 					"&size=" + sizeString +
 					"&offset=" + pageString,
 			)
@@ -304,21 +304,24 @@ func getLibrary() tea.Cmd {
 			currentPageNumber += 1
 		}
 
-		slices.SortFunc(newLibrary, func(a, b Album) int {
-			compareNames := cmp.Compare(
-				strings.ToLower(a.artist),
-				strings.ToLower(b.artist),
-			)
-
-			if compareNames == 0 {
-				return cmp.Compare(
-					a.year,
-					b.year,
+		switch sortMethod {
+		case "alphabeticalByArtist":
+			slices.SortFunc(newLibrary, func(a, b Album) int {
+				compareNames := cmp.Compare(
+					strings.ToLower(a.artist),
+					strings.ToLower(b.artist),
 				)
-			} else {
-				return compareNames
-			}
-		})
+
+				if compareNames == 0 {
+					return cmp.Compare(
+						a.year,
+						b.year,
+					)
+				} else {
+					return compareNames
+				}
+			})
+		}
 
 		return msgLibraryLoaded(&newLibrary)
 	}
