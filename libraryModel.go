@@ -144,6 +144,9 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return msgArtworkLoaded{}
 			})
 		}
+
+		cmds = append(cmds, func() tea.Msg { return msgChangePage(0) })
+
 		return m, tea.Sequence(cmds...)
 	case msgSonglistLoaded:
 		msg.album.songlist = msg.songlist
