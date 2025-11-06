@@ -27,7 +27,6 @@ const (
 	libraryFocus ContentFocus = iota
 	queueFocus
 	albumFocus
-	sortFocus
 )
 
 var (

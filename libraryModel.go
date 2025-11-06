@@ -22,6 +22,9 @@ type LibraryModel struct {
 	columns     int
 	currentPage int
 	selection   int
+
+	sortModel tea.Model
+	isSorting bool
 }
 
 type msgLibraryLoaded *[]Album
@@ -44,18 +47,32 @@ func initLibraryModel() LibraryModel {
 		loaded:      false,
 		currentPage: 0,
 		selection:   0,
+		sortModel:   initSortModel(),
+		isSorting:   false,
 	}
 }
 
 func (m LibraryModel) Init() tea.Cmd {
 	return tea.Batch(
-		getLibrary("alphabeticalByArtist"),
+		getLibrary(string(sortArtist)),
 	)
 }
 
 func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 	cmds := []tea.Cmd{}
+
+	if m.isSorting {
+		m.sortModel, cmd = m.sortModel.Update(msg)
+		cmds = append(cmds, cmd)
+
+		switch msg.(type) {
+		case msgSortSelect:
+			m.isSorting = false
+		}
+
+		return m, tea.Batch(cmds...)
+	}
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -72,13 +89,13 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		})
 	case tea.KeyMsg:
-		if m.loaded == false {
+		if !m.loaded {
 			return m, nil
 		}
 
 		switch msg.String() {
 		case "s":
-			currentContentFocus = sortFocus
+			m.isSorting = !m.isSorting
 
 		case "n":
 			return m, func() tea.Msg {
@@ -152,7 +169,7 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.selection = int(newSelection)
 	case msgAddAlbumToQueue:
-		if m.loaded == false {
+		if !m.loaded {
 			return m, nil
 		}
 
@@ -177,9 +194,7 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.columns = msg.columns
 
 		if m.rows*m.columns != 0 {
-			m.currentPage = int(math.Floor(
-				float64(selectedAlbum / (m.rows * m.columns)),
-			))
+			m.currentPage = int(float64(selectedAlbum / (m.rows * m.columns)))
 
 			m.selection = selectedAlbum - int(float64(m.currentPage)*
 				float64(m.rows*m.columns))
@@ -190,7 +205,7 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m LibraryModel) View() string {
-	if m.loaded == false {
+	if !m.loaded {
 		return lipgloss.NewStyle().
 			Width(contentWidth).
 			Height(contentHeight).
@@ -237,13 +252,24 @@ func (m LibraryModel) View() string {
 		Height(contentHeight - 1).
 		Render(output)
 
-	return lipgloss.JoinVertical(
+	result := lipgloss.JoinVertical(
 		lipgloss.Center,
 		albumPageRender,
 		fmt.Sprintf("Page %v/%v", m.currentPage+1, math.Ceil(
 			float64(len(m.library))/
 				float64((m.rows*m.columns)))),
 	)
+
+	if m.isSorting {
+		choiceRender := m.sortModel.View()
+
+		row := (contentWidth / 2) - (lipgloss.Width(choiceRender) / 2)
+		col := (contentHeight / 2) - (lipgloss.Height(choiceRender) / 2)
+
+		result, _ = Overlay(result, choiceRender, col, row, true)
+	}
+
+	return result
 }
 
 func getLibrary(sortMethod string) tea.Cmd {
@@ -279,12 +305,12 @@ func getLibrary(sortMethod string) tea.Cmd {
 			var list any
 			json.Unmarshal([]byte(resultBody), &list)
 
-			respSubsonic, _ := list.(map[string]any)["subsonic-response"]
-			respAlbumList, _ := respSubsonic.(map[string]any)["albumList"]
+			respSubsonic := list.(map[string]any)["subsonic-response"]
+			respAlbumList := respSubsonic.(map[string]any)["albumList"]
 			respAlbums, ok := respAlbumList.(map[string]any)["album"].([]any)
 
 			// Most likely out of range, so just exit
-			if ok == false {
+			if !ok {
 				shouldContinue = false
 				continue
 			}
@@ -357,9 +383,9 @@ func getSonglist(album *Album) tea.Msg {
 	var list any
 	json.Unmarshal([]byte(resultBody), &list)
 
-	respSubsonic, _ := list.(map[string]any)["subsonic-response"]
-	respAlbum, _ := respSubsonic.(map[string]any)["album"]
-	respSongs, _ := respAlbum.(map[string]any)["song"].([]any)
+	respSubsonic := list.(map[string]any)["subsonic-response"]
+	respAlbum := respSubsonic.(map[string]any)["album"]
+	respSongs := respAlbum.(map[string]any)["song"].([]any)
 
 	for _, element := range respSongs {
 		songId := element.(map[string]any)["id"].(string)

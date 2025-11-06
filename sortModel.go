@@ -1,26 +1,27 @@
 package main
 
 import (
+	"math"
+
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
 
-type SortModel struct {
-	cursor int
-}
+type SortModel struct{}
 
-type sortEnum int
+type msgSortSelect struct{}
+
+type sortEnum string
 
 const (
-	sortRecent sortEnum = iota
-	sortArtist
-	sortAlbum
+	sortRecent   sortEnum = "recent"
+	sortArtist   sortEnum = "alphabeticalByArtist"
+	sortAlbum    sortEnum = "alphabeticalByName"
+	sortFrequent sortEnum = "frequent"
 )
 
 func initSortModel() SortModel {
-	return SortModel{
-		cursor: 0,
-	}
+	return SortModel{}
 }
 
 func (m SortModel) Init() tea.Cmd {
@@ -34,31 +35,28 @@ func (m SortModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "q":
-			cmds = append(cmds, getLibrary("alphabeticalByArtist"))
+			cmds = append(cmds, getLibrary(string(sortArtist)))
 		case "w":
-			cmds = append(cmds, getLibrary("recent"))
+			cmds = append(cmds, getLibrary(string(sortAlbum)))
+		case "e":
+			cmds = append(cmds, getLibrary(string(sortRecent)))
+		case "r":
+			cmds = append(cmds, getLibrary(string(sortFrequent)))
 		}
-
-		currentContentFocus = libraryFocus
+		cmds = append(cmds, func() tea.Msg { return msgSortSelect{} })
 	}
 
 	return m, tea.Batch(cmds...)
 }
 
 func (m SortModel) View() string {
-	choiceStyle := lipgloss.NewStyle()
+	choiceStyle := lipgloss.NewStyle().
+		Width(int(math.Min(30, float64(contentWidth-2)))).
+		Border(lipgloss.NormalBorder())
 
 	choiceRender := choiceStyle.Render(
-		"Press a letter to sort\nq: Artist/Year\nw: Recent",
+		"Press a letter to sort\n\nq: Artist/Year\nw: Album\ne: Last Played\nr: Most Played",
 	)
 
-	output := lipgloss.Place(
-		20,
-		20,
-		lipgloss.Center,
-		lipgloss.Center,
-		choiceRender,
-	)
-
-	return output
+	return choiceRender
 }

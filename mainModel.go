@@ -9,10 +9,7 @@ import (
 type MainModel struct {
 	contentModel    tea.Model
 	controllerModel tea.Model
-	queue           *Queue
 }
-
-type msgMainChangeFocus tea.Model
 
 // Model Initialisation
 func initMainModel() MainModel {
@@ -110,8 +107,6 @@ func (m MainModel) renderStatus() string {
 			statusMessage = "Queue"
 		case albumFocus:
 			statusMessage = "Album"
-		case sortFocus:
-			statusMessage = "Sort"
 		}
 	}
 

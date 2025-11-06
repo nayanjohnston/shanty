@@ -72,6 +72,9 @@ func imageArray(imageId string) ([]string, error) {
 		"symbols",
 		imageFile,
 	).Output()
+	if err != nil {
+		return nil, err
+	}
 
 	file, err := os.Create(textFile)
 	if err != nil {

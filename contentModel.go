@@ -8,7 +8,6 @@ type ContentModel struct {
 	libraryModel tea.Model
 	queueModel   tea.Model
 	albumModel   tea.Model
-	sortModel    tea.Model
 }
 
 func initContentModel() ContentModel {
@@ -16,7 +15,6 @@ func initContentModel() ContentModel {
 		libraryModel: initLibraryModel(),
 		queueModel:   initQueueModel(),
 		albumModel:   initAlbumModel(),
-		sortModel:    initSortModel(),
 	}
 }
 
@@ -48,8 +46,6 @@ func (m ContentModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.queueModel, cmd = m.queueModel.Update(msg)
 		case albumFocus:
 			m.albumModel, cmd = m.albumModel.Update(msg)
-		case sortFocus:
-			m.sortModel, cmd = m.sortModel.Update(msg)
 		}
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
@@ -62,9 +58,6 @@ func (m ContentModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	cmds = append(cmds, cmd)
 
 	m.albumModel, cmd = m.albumModel.Update(msg)
-	cmds = append(cmds, cmd)
-
-	m.sortModel, cmd = m.sortModel.Update(msg)
 	cmds = append(cmds, cmd)
 
 	return m, tea.Batch(cmds...)
@@ -80,8 +73,6 @@ func (m ContentModel) View() string {
 		output = m.queueModel.View()
 	case albumFocus:
 		output = m.albumModel.View()
-	case sortFocus:
-		output = m.sortModel.View()
 	}
 
 	return output
