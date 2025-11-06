@@ -15,6 +15,9 @@ To run shanty, you'll also need to install the following:
 - [chafa](https://github.com/hpjansson/chafa) (For image display)
 - [mpv](https://github.com/mpv-player/mpv) (For audio playback)
 
+> [!NOTE]
+> This program relies on libmpv as an external library, so you'll need the libmpv library installed. On some Linux distros like Arch, this should just come with the `mpv` package, while others like Ubuntu will have it in a seperate package (e.g. `libmpv-dev`).
+
 # Configuration
 
 Configuration is located at `~/.config/shanty/config.toml`. The program requires you to set `serverUrl`, `serverUser` and `serverPassword` to run.
