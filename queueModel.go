@@ -184,7 +184,7 @@ func (m QueueModel) View() string {
 		queueListTop -= 1
 	}
 
-	spaceLeft := contentHeight - lipgloss.Height(t.Render())
+	spaceLeft := contentHeight - lipgloss.Height(t.Render()) + 1
 	index := queueListTop
 	isSpace := true
 
