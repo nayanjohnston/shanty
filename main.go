@@ -40,6 +40,8 @@ var (
 
 	currentMainFocus    MainFocus    = controllerFocus
 	currentContentFocus ContentFocus = libraryFocus
+
+	globalProgram *tea.Program
 )
 
 func main() {
@@ -61,12 +63,12 @@ func main() {
 	defer f.Close()
 
 	// Create bubbletea program
-	p := tea.NewProgram(
+	globalProgram = tea.NewProgram(
 		initMainModel(),
 		tea.WithAltScreen(),
 	)
 
-	if _, err := p.Run(); err != nil {
+	if _, err := globalProgram.Run(); err != nil {
 		panic(err)
 	}
 }

@@ -6,8 +6,17 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
+type LoopMode int
+
+const (
+	loopNone LoopMode = iota
+	loopQueue
+	loopSong
+)
+
 var globalMpv *mpv.Mpv = initMpv()
 var globalQueue Queue = Queue{currentSong: 0}
+var loopMode LoopMode = loopNone
 
 func initMpv() *mpv.Mpv {
 	// Create mpv player

@@ -12,28 +12,29 @@ import (
 	"github.com/gen2brain/go-mpv"
 )
 
-type LoopMode int
-
-const (
-	loopNone LoopMode = iota
-	loopQueue
-	loopSong
-)
-
 // Model Definition
 type ControllerModel struct {
 	progressBar progress.Model
 	scrobble    bool
-	loopMode    LoopMode
 }
 
 type msgMpvEvent *mpv.Event
-type msgLoadSong struct{ playNow bool }
-type msgNextSong struct{}
-type msgPrevSong struct{}
-type msgStopPlayback struct{}
-type msgSetScrobbled bool
-type msgSwitchLoopMode struct{}
+
+// Controls
+type msgCtrlLoadSong struct{ playNow bool }
+type msgCtrlChangeSong struct{ amount int64 }
+type msgCtrlSetPaused struct{ paused bool }
+type msgCtrlStop struct{}
+type msgCtrlSeek struct {
+	amount   int64
+	seekType string
+}
+type msgCtrlChangeVolume struct {
+	amount     int64
+	volumeType string
+}
+type msgCtrlToggleLoopMode struct{}
+type msgCtrlSetScrobbled struct{ hasScrobbled bool }
 
 // Model Initialisation
 func initControllerModel() ControllerModel {
@@ -42,7 +43,6 @@ func initControllerModel() ControllerModel {
 
 	controllerModel := ControllerModel{
 		progressBar: newProgressBar,
-		loopMode:    loopNone,
 	}
 
 	return controllerModel
@@ -62,23 +62,62 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
+		// Toggle play/pause
 		case " ":
-			globalMpv.Command([]string{"cycle", "pause"})
-			cmds = append(cmds, checkScrobble(&m, 0, false))
+			property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
+			paused, _ := property.(bool)
+
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlSetPaused{paused: !paused}
+			})
+
+		// Seeking
 		case "h":
-			globalMpv.Command([]string{"seek", "-5", "relative"})
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlSeek{
+					amount:   -5,
+					seekType: "relative",
+				}
+			})
 		case "l":
-			globalMpv.Command([]string{"seek", "5", "relative"})
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlSeek{
+					amount:   5,
+					seekType: "relative",
+				}
+			})
+
+		// Volume
 		case "k":
-			globalMpv.Command([]string{"add", "volume", "5"})
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlChangeVolume{
+					amount:     5,
+					volumeType: "add",
+				}
+			})
 		case "j":
-			globalMpv.Command([]string{"add", "volume", "-5"})
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlChangeVolume{
+					amount:     -5,
+					volumeType: "add",
+				}
+			})
+
+		// Skipping
 		case "n":
-			cmds = append(cmds, func() tea.Msg { return msgNextSong{} })
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlChangeSong{amount: 1}
+			})
 		case "p":
-			cmds = append(cmds, func() tea.Msg { return msgPrevSong{} })
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlChangeSong{amount: -1}
+			})
+
+		// Looping
 		case "r":
-			cmds = append(cmds, func() tea.Msg { return msgSwitchLoopMode{} })
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlToggleLoopMode{}
+			})
 		}
 	case msgMpvEvent:
 		var e mpv.Event = *msg
@@ -98,14 +137,16 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		case mpv.EventEnd:
 			if e.EndFile().Reason == mpv.EndFileEOF {
-				cmd = func() tea.Msg { return msgNextSong{} }
-				cmds = append(cmds, cmd)
+				cmds = append(cmds, func() tea.Msg {
+					return msgCtrlChangeSong{amount: 1}
+				})
 			}
 		}
 
 		cmd = func() tea.Msg { return msgMpvEvent(globalMpv.WaitEvent(10000)) }
 		cmds = append(cmds, cmd)
-	case msgLoadSong:
+
+	case msgCtrlLoadSong:
 		// Ignore if songlist is empty.
 		if len(globalQueue.songlist) == 0 {
 			break
@@ -117,61 +158,109 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			globalQueue.getCurrentSong().getUrl(),
 		})
 
+		// Set paused state
 		globalMpv.SetProperty("pause", mpv.FormatFlag, !msg.playNow)
+		cmds = append(cmds, func() tea.Msg {
+			return msgCtrlSetPaused{paused: !msg.playNow}
+		})
 
+		// Reset scrobble
 		m.scrobble = false
+
+		// Update mpris metadata
+		globalMprisEventHandler.Player.OnTitle()
+		globalMprisEventHandler.Player.OnPlayPause()
+		globalMprisEventHandler.Player.OnOptions()
+
 		return m, checkScrobble(&m, 0, false)
-
-	case msgNextSong:
+	case msgCtrlChangeSong:
 		shouldPlay := true
+		shouldMove := true
+		from := globalQueue.currentSong
+		to := globalQueue.currentSong + int(msg.amount)
+		wrapped := false
 
-		switch m.loopMode {
-		case loopNone:
-			// If we're the last song in the queue, go to the first song and pause.
-			if globalQueue.currentSong >= len(globalQueue.songlist)-1 {
-				globalQueue.currentSong = 0
-				shouldPlay = false
-			} else {
-				globalQueue.updatePosition(1)
-			}
-		case loopQueue:
-			// If we're the last song in the queue, go to the first song.
-			if globalQueue.currentSong >= len(globalQueue.songlist)-1 {
-				globalQueue.currentSong = 0
-			} else {
-				globalQueue.updatePosition(1)
-			}
-		case loopSong:
-			// Do nothing.
+		// Wrap "to" to a valid point on the songlist
+		for to >= len(globalQueue.songlist) {
+			to -= len(globalQueue.songlist)
+			wrapped = true
 		}
 
-		cmds = append(cmds, func() tea.Msg {
-			return msgLoadSong{playNow: shouldPlay}
-		})
-	case msgPrevSong:
+		for to < 0 {
+			to += len(globalQueue.songlist)
+			wrapped = true
+		}
+
+		if loopMode == loopNone {
+			// Pause after queue wraps around.
+			if wrapped && msg.amount > 0 {
+				shouldPlay = false
+			}
+			// Don't wrap around if going back.
+			if wrapped && msg.amount < 0 {
+				to = 0
+			}
+		}
+
+		if loopMode == loopSong {
+			shouldMove = false
+		}
+
+		// Don't move backward if position is more then 5 seconds ahead (just
+		// replay)
 		property, _ := globalMpv.GetProperty("time-pos", mpv.FormatInt64)
 		position, _ := property.(int64)
 
-		if position <= 5 && globalQueue.currentSong > 0 {
-			globalQueue.updatePosition(-1)
+		if msg.amount < 0 && position >= 5 {
+			shouldMove = false
+		}
+
+		difference := to - from
+
+		// Update position (don't move if looping song)
+		if shouldMove {
+			globalQueue.updatePosition(difference)
 		}
 
 		cmds = append(cmds, func() tea.Msg {
-			return msgLoadSong{playNow: true}
+			return msgCtrlLoadSong{playNow: shouldPlay}
 		})
-	case msgStopPlayback:
+	case msgCtrlSetPaused:
+		globalMpv.SetProperty("pause", mpv.FormatFlag, msg.paused)
+		globalMprisEventHandler.Player.OnPlayPause()
+	case msgCtrlStop:
 		globalMpv.Command([]string{"stop"})
-	case msgSetScrobbled:
-		m.scrobble = bool(msg)
-	case msgSwitchLoopMode:
-		switch m.loopMode {
-		case loopNone:
-			m.loopMode = loopQueue
-		case loopQueue:
-			m.loopMode = loopSong
-		case loopSong:
-			m.loopMode = loopNone
+
+		// Update mpris metadata
+		globalMprisEventHandler.Player.OnTitle()
+		globalMprisEventHandler.Player.OnPlayPause()
+		globalMprisEventHandler.Player.OnOptions()
+	case msgCtrlSeek:
+		amount := fmt.Sprintf("%v", msg.amount)
+		globalMpv.Command([]string{"seek", amount, msg.seekType})
+	case msgCtrlChangeVolume:
+		switch msg.volumeType {
+		case "set":
+			globalMpv.SetProperty("volume", mpv.FormatInt64, msg.amount)
+		case "add":
+			amount := fmt.Sprintf("%v", msg.amount)
+			globalMpv.Command([]string{"add", "volume", amount})
 		}
+
+		globalMprisEventHandler.Player.OnVolume()
+	case msgCtrlToggleLoopMode:
+		switch loopMode {
+		case loopNone:
+			loopMode = loopQueue
+		case loopQueue:
+			loopMode = loopSong
+		case loopSong:
+			loopMode = loopNone
+		}
+
+		globalMprisEventHandler.Player.OnOptions()
+	case msgCtrlSetScrobbled:
+		m.scrobble = msg.hasScrobbled
 	}
 
 	return m, tea.Batch(cmds...)
@@ -241,7 +330,7 @@ func (m ControllerModel) renderStatus(isFocused bool) string {
 
 	loopIcon := "󰑗 "
 
-	switch m.loopMode {
+	switch loopMode {
 	case loopQueue:
 		loopIcon = "󰑖 "
 	case loopSong:
@@ -366,7 +455,7 @@ func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.
 						"&id=" + song.id +
 						"&submission=True")
 
-				return msgSetScrobbled(true)
+				return msgCtrlSetScrobbled{hasScrobbled: true}
 			}
 		} else {
 			property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)

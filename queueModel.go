@@ -15,14 +15,15 @@ type QueueModel struct {
 	cursor int
 }
 
-type msgMoveCursor int
-type msgMoveSong struct {
+type msgQueueMoveCursor struct{ amount int64 }
+
+type msgQueueAddSong struct{ song *Song }
+type msgQueueRemoveIndex struct{ index int }
+type msgQueueMoveSong struct {
 	from int
 	to   int
 }
-type msgClearQueue struct{}
-type msgQueueSong *Song
-type msgRemoveFromQueue int
+type msgQueueClear struct{}
 
 func initQueueModel() QueueModel {
 	return QueueModel{}
@@ -39,49 +40,66 @@ func (m QueueModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "j":
-			cmds = append(cmds, func() tea.Msg { return msgMoveCursor(1) })
+			cmds = append(cmds, func() tea.Msg {
+				return msgQueueMoveCursor{amount: 1}
+			})
 		case "k":
-			cmds = append(cmds, func() tea.Msg { return msgMoveCursor(-1) })
+			cmds = append(cmds, func() tea.Msg {
+				return msgQueueMoveCursor{amount: -1}
+			})
 		case "ctrl+j":
 			cmds = append(cmds, func() tea.Msg {
-				return msgMoveSong{
+				return msgQueueMoveSong{
 					from: m.cursor,
 					to:   m.cursor + 1,
 				}
 			})
 		case "ctrl+k":
 			cmds = append(cmds, func() tea.Msg {
-				return msgMoveSong{
+				return msgQueueMoveSong{
 					from: m.cursor,
 					to:   m.cursor - 1,
 				}
 			})
 		case "d":
-			cmds = append(cmds, func() tea.Msg { return msgRemoveFromQueue(m.cursor) })
+			cmds = append(cmds, func() tea.Msg {
+				return msgQueueRemoveIndex{index: m.cursor}
+			})
 		case "enter":
 			cmds = append(cmds, func() tea.Msg {
 				globalQueue.currentSong = m.cursor
-				return msgLoadSong{playNow: true}
+				return msgCtrlLoadSong{playNow: true}
 			})
 		}
-	case msgMoveCursor:
-		m.cursor += int(msg)
-	case msgMoveSong:
-		globalQueue.moveSong(msg.from, msg.to)
-		return m, func() tea.Msg { return msgMoveCursor(msg.to - msg.from) }
-	case msgRemoveFromQueue:
+	case msgQueueMoveCursor:
+		m.cursor += int(msg.amount)
+
+	case msgQueueAddSong:
+		globalQueue.addSong(msg.song)
+		globalMprisEventHandler.Player.OnOptions()
+	case msgQueueRemoveIndex:
 		prevSong := globalQueue.getCurrentSong()
-		globalQueue.removeSong(int(msg))
+		globalQueue.removeSong(int(msg.index))
 
 		if len(globalQueue.songlist) == 0 {
-			cmds = append(cmds, func() tea.Msg { return msgStopPlayback{} })
+			cmds = append(cmds, func() tea.Msg { return msgCtrlStop{} })
 		} else if globalQueue.getCurrentSong() != prevSong {
-			cmds = append(cmds, func() tea.Msg { return msgLoadSong{playNow: true} })
+			cmds = append(cmds, func() tea.Msg {
+				return msgCtrlLoadSong{playNow: true}
+			})
 		}
-	case msgClearQueue:
+
+		globalMprisEventHandler.Player.OnOptions()
+	case msgQueueMoveSong:
+		globalQueue.moveSong(msg.from, msg.to)
+		globalMprisEventHandler.Player.OnOptions()
+		return m, func() tea.Msg {
+			return msgQueueMoveCursor{amount: int64(msg.to - msg.from)}
+		}
+	case msgQueueClear:
 		globalQueue.clearQueue()
-	case msgQueueSong:
-		globalQueue.addSong(msg)
+
+		globalMprisEventHandler.Player.OnOptions()
 	}
 
 	m.cursor = m.cursorClamp()
