@@ -91,11 +91,15 @@ func (m AlbumModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, func() tea.Msg { return getSonglist(m.album) }
 	case msgAlbumViewSelect:
 		if m.focusedOnList {
-			cmds := []tea.Cmd{func() tea.Msg { return msgQueueSong(m.album.songlist[m.cursor]) }}
+			cmds := []tea.Cmd{func() tea.Msg {
+				return msgQueueAddSong{song: m.album.songlist[m.cursor]}
+			}}
 
 			// If nothing is in the queue, just start playing.
 			if len(globalQueue.songlist) == 0 {
-				cmds = append(cmds, func() tea.Msg { return msgLoadSong{playNow: true} })
+				cmds = append(cmds, func() tea.Msg {
+					return msgCtrlLoadSong{playNow: true}
+				})
 			}
 
 			return m, tea.Sequence(cmds...)
@@ -103,7 +107,7 @@ func (m AlbumModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			switch m.options[m.optionSelected].id {
 			case "play":
 				return m, tea.Sequence(
-					func() tea.Msg { return msgClearQueue{} },
+					func() tea.Msg { return msgQueueClear{} },
 					func() tea.Msg { return msgAddAlbumToQueue(m.album) },
 				)
 			case "queue":
@@ -113,12 +117,7 @@ func (m AlbumModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 
 	m.optionSelected = m.clampOptions()
-
-	if m.album != nil {
-		if m.cursor >= len(m.album.songlist) {
-			m.cursor = len(m.album.songlist) - 1
-		}
-	}
+	m.cursor = m.clampCursor()
 
 	if currentContentFocus != albumFocus {
 		m.album = nil
@@ -411,11 +410,27 @@ func (m AlbumModel) renderSonglist(listWidth int, listHeight int) string {
 }
 
 func (m AlbumModel) clampOptions() int {
-	if m.optionSelected < 0 {
-		m.optionSelected = 0
-	} else if m.optionSelected >= len(m.options) {
+	if len(m.options) != 0 && m.optionSelected >= len(m.options) {
 		m.optionSelected = len(m.options) - 1
 	}
 
+	if m.optionSelected < 0 {
+		m.optionSelected = 0
+	}
+
 	return m.optionSelected
+}
+
+func (m AlbumModel) clampCursor() int {
+	if m.album != nil {
+		if m.cursor >= len(m.album.songlist) {
+			m.cursor = len(m.album.songlist) - 1
+		}
+	}
+
+	if m.cursor < 0 {
+		m.cursor = 0
+	}
+
+	return m.cursor
 }

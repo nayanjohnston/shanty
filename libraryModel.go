@@ -180,13 +180,15 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		for _, song := range msg.songlist {
 			sequence = append(sequence, func() tea.Msg {
-				return msgQueueSong(song)
+				return msgQueueAddSong{song: song}
 			})
 		}
 
 		// If nothing is in the queue, just start playing.
 		if len(globalQueue.songlist) == 0 {
-			sequence = append(sequence, func() tea.Msg { return msgLoadSong{playNow: true} })
+			sequence = append(sequence, func() tea.Msg {
+				return msgCtrlLoadSong{playNow: true}
+			})
 		}
 
 		cmd = tea.Sequence(sequence...)

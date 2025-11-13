@@ -43,7 +43,7 @@ func imageArray(imageId string) ([]string, error) {
 			"&p=" + config.ServerPassword +
 			"&v=1.12.0" +
 			"&c=shanty" +
-			"&size=100" +
+			"&size=250" +
 			"&id=" + imageId
 
 		imageResponse, err := http.Get(imageUrl)
