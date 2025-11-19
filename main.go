@@ -79,7 +79,7 @@ func main() {
 	)
 
 	if _, err := globalProgram.Run(); err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 }
 
