@@ -139,7 +139,12 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		for index, element := range m.library {
 			cmds = append(cmds, func() tea.Msg {
-				newArt, _ := imageArray(element.artworkId)
+				newArt, err := imageArray(element.artworkId)
+
+				if err != nil {
+					panic(err)
+				}
+
 				m.library[index].artwork = newArt
 				return msgArtworkLoaded{}
 			})

@@ -1,6 +1,10 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
+	"io"
+	"net/http"
 	"os"
 
 	"github.com/pelletier/go-toml/v2"
@@ -19,17 +23,45 @@ func readConfig(conf *ShantyConfig) error {
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return err
+		return errors.New("config: No config file found. Create one in \"~/.config/shanty/config.toml\"")
 	}
 
 	// Read config data.
 	configData, err := os.ReadFile(homeDir + "/.config/shanty/config.toml")
 	if err != nil {
-		return err
+		return errors.New("config: Config data is invalid. Make sure all values are correct.")
 	}
 
 	// Extract data to object.
 	err = toml.Unmarshal([]byte(configData), conf)
+
+	// Validate values...
+	serverUrl := conf.ServerUrl +
+		"/rest/ping.view?" +
+		"u=" + conf.ServerUser +
+		"&p=" + conf.ServerPassword +
+		"&v=1.12.0" +
+		"&c=shanty" +
+		"&f=json"
+
+	result, err := http.Get(serverUrl)
+	if err != nil {
+		return errors.New("config: URL cannot be accessed. (Is it valid?)")
+	}
+
+	resultBody, _ := io.ReadAll(result.Body)
+
+	var list any
+	json.Unmarshal([]byte(resultBody), &list)
+
+	respSubsonic := list.(map[string]any)["subsonic-response"]
+	status := respSubsonic.(map[string]any)["status"].(string)
+
+	if status != "ok" {
+		urlError := respSubsonic.(map[string]any)["error"]
+		message := urlError.(map[string]any)["message"].(string)
+		return errors.New("config: " + message)
+	}
 
 	return err
 }
