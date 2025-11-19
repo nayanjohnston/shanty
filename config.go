@@ -23,13 +23,13 @@ func readConfig(conf *ShantyConfig) error {
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return errors.New("config: No config file found. Create one in \"~/.config/shanty/config.toml\"")
+		return errors.New("shanty: No config file found. Create one in \"~/.config/shanty/config.toml\"")
 	}
 
 	// Read config data.
 	configData, err := os.ReadFile(homeDir + "/.config/shanty/config.toml")
 	if err != nil {
-		return errors.New("config: Config data is invalid. Make sure all values are correct.")
+		return errors.New("shanty: Config data is invalid. Make sure all values are correct.")
 	}
 
 	// Extract data to object.
@@ -46,7 +46,7 @@ func readConfig(conf *ShantyConfig) error {
 
 	result, err := http.Get(serverUrl)
 	if err != nil {
-		return errors.New("config: URL cannot be accessed. (Is it valid?)")
+		return errors.New("shanty: URL cannot be accessed. (Is it valid?)")
 	}
 
 	resultBody, _ := io.ReadAll(result.Body)
