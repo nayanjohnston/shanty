@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -139,7 +140,12 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		for index, element := range m.library {
 			cmds = append(cmds, func() tea.Msg {
-				newArt, _ := imageArray(element.artworkId)
+				newArt, err := imageArray(element.artworkId)
+
+				if err != nil {
+					panic(err)
+				}
+
 				m.library[index].artwork = newArt
 				return msgArtworkLoaded{}
 			})
@@ -380,7 +386,7 @@ func getSonglist(album *Album) tea.Msg {
 
 	result, err := http.Get(albumUrl)
 	if err != nil {
-		panic(err)
+		panic(errors.New("shanty: Cannot get Songlist for Album."))
 	}
 
 	resultBody, _ := io.ReadAll(result.Body)

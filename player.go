@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"slices"
 
 	"github.com/gen2brain/go-mpv"
@@ -33,7 +34,7 @@ func initMpv() *mpv.Mpv {
 	// Start player and return
 	err := m.Initialize()
 	if err != nil {
-		panic(err)
+		panic(errors.New("shanty: Cannot initialize mpv. (Is both libmpv and mpv installed?)"))
 	}
 
 	return m

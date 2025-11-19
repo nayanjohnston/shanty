@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -49,8 +50,7 @@ func main() {
 	config = &ShantyConfig{}
 	err := readConfig(config)
 	if err != nil {
-		fmt.Println("CONFIG FILE NOT FOUND!\nPlease create a config file in \"~/.config/shanty/config.toml\".")
-		return
+		panic(err)
 	}
 
 	// Setup bubbletea logging
@@ -58,7 +58,7 @@ func main() {
 
 	f, err := tea.LogToFile(tempFolder+"/shanty.log", "debug")
 	if err != nil {
-		panic(err)
+		panic(errors.New("shanty: Cannot create log file at \"" + tempFolder + "/shanty.log\""))
 	}
 	defer f.Close()
 

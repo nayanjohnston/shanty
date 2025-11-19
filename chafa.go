@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,7 +19,7 @@ var (
 func imageArray(imageId string) ([]string, error) {
 	cacheDir, err := os.UserCacheDir()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("shanty: Cannot get user cache.")
 	}
 
 	os.MkdirAll(cacheDir+"/shanty/art/", 0755)
@@ -30,7 +31,7 @@ func imageArray(imageId string) ([]string, error) {
 	if _, err := os.Stat(textFile); err == nil {
 		returnText, err := os.ReadFile(textFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("shanty: Error when getting existing art text.")
 		}
 		splitString := strings.Split(string(returnText), "\n")
 		return splitString[:len(splitString)-1], nil
@@ -48,19 +49,19 @@ func imageArray(imageId string) ([]string, error) {
 
 		imageResponse, err := http.Get(imageUrl)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("shanty: Cannot get image url: " + imageUrl)
 		}
 		defer imageResponse.Body.Close()
 
 		file, err := os.Create(imageFile)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("shanty: Cannot create image file.")
 		}
 		defer file.Close()
 
 		_, err = io.Copy(file, imageResponse.Body)
 		if err != nil {
-			return nil, err
+			return nil, errors.New("shanty: Cannot copy image data to image file.")
 		}
 	}
 
@@ -73,18 +74,18 @@ func imageArray(imageId string) ([]string, error) {
 		imageFile,
 	).Output()
 	if err != nil {
-		return nil, err
+		return nil, errors.New("shanty: Cannot convert image to text via chafa. (Is chafa installed?)")
 	}
 
 	file, err := os.Create(textFile)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("shanty: Cannot create text file.")
 	}
 	defer file.Close()
 
 	_, err = io.Copy(file, bytes.NewReader(chafaCommand))
 	if err != nil {
-		return nil, err
+		return nil, errors.New("shanty: Cannot copy text data to text file.")
 	}
 
 	chafaOutput := string(chafaCommand)
