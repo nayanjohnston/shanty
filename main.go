@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -57,7 +58,7 @@ func main() {
 
 	f, err := tea.LogToFile(tempFolder+"/shanty.log", "debug")
 	if err != nil {
-		panic(err)
+		panic(errors.New("shanty: Cannot create log file at \"" + tempFolder + "/shanty.log\""))
 	}
 	defer f.Close()
 

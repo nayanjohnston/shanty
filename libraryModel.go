@@ -3,6 +3,7 @@ package main
 import (
 	"cmp"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -385,7 +386,7 @@ func getSonglist(album *Album) tea.Msg {
 
 	result, err := http.Get(albumUrl)
 	if err != nil {
-		panic(err)
+		panic(errors.New("shanty: Cannot get Songlist for Album."))
 	}
 
 	resultBody, _ := io.ReadAll(result.Body)
