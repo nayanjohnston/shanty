@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"os"
+	"runtime/debug"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -46,6 +47,15 @@ var (
 )
 
 func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			error := fmt.Errorf("%v", r)
+			fmt.Println(error.Error() +
+				"\n\nstacktrace from panic: \n" +
+				string(debug.Stack()))
+		}
+	}()
+
 	// Read Config
 	config = &ShantyConfig{}
 	err := readConfig(config)
@@ -69,7 +79,7 @@ func main() {
 	)
 
 	if _, err := globalProgram.Run(); err != nil {
-		panic(err)
+		panic(err.Error())
 	}
 }
 
