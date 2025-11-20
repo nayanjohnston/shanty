@@ -3,8 +3,8 @@ package main
 import (
 	"cmp"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"github.com/pkg/errors"
 	"io"
 	"log"
 	"math"

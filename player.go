@@ -1,7 +1,7 @@
 package main
 
 import (
-	"errors"
+	"github.com/pkg/errors"
 	"slices"
 
 	"github.com/gen2brain/go-mpv"

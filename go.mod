@@ -11,6 +11,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0
 	github.com/mattn/go-runewidth v0.0.17
 	github.com/pelletier/go-toml/v2 v2.2.4
+	github.com/pkg/errors v0.9.1
 	github.com/quarckster/go-mpris-server v1.0.3
 )
 
