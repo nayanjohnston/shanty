@@ -50,8 +50,6 @@ func main() {
 	config = &ShantyConfig{}
 	err := readConfig(config)
 	if err != nil {
-		stack := errors.WithStack(err)
-		fmt.Printf("%+v", stack)
 		panic(err)
 	}
 
@@ -71,6 +69,8 @@ func main() {
 	)
 
 	if _, err := globalProgram.Run(); err != nil {
+		stack := errors.WithStack(err)
+		fmt.Printf("%+v", stack)
 		panic(err)
 	}
 }
