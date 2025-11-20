@@ -69,8 +69,6 @@ func main() {
 	)
 
 	if _, err := globalProgram.Run(); err != nil {
-		stack := errors.WithStack(err)
-		fmt.Printf("%+v", stack)
 		panic(err)
 	}
 }

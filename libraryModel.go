@@ -30,6 +30,7 @@ type LibraryModel struct {
 
 type msgLibraryLoaded *[]Album
 type msgErrorReadingLibrary error
+type msgErrorArtworkArray error
 type msgAddAlbumToQueue *Album
 type msgUpdatedLibrarySize struct {
 	rows    int
@@ -140,10 +141,11 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		for index, element := range m.library {
 			cmds = append(cmds, func() tea.Msg {
+
 				newArt, err := imageArray(element.artworkId)
 
 				if err != nil {
-					panic(err)
+					return msgErrorArtworkArray(err)
 				}
 
 				m.library[index].artwork = newArt
@@ -154,6 +156,8 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, func() tea.Msg { return msgChangePage(0) })
 
 		return m, tea.Sequence(cmds...)
+	case msgErrorArtworkArray:
+		panic(msg)
 	case msgSonglistLoaded:
 		msg.album.songlist = msg.songlist
 	case msgChangePage:

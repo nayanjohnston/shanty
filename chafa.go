@@ -73,6 +73,7 @@ func imageArray(imageId string) ([]string, error) {
 		"symbols",
 		imageFile,
 	).Output()
+
 	if err != nil {
 		return nil, errors.New("shanty: Cannot convert image to text via chafa. (Is chafa installed?)")
 	}
