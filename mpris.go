@@ -6,13 +6,9 @@ import (
 
 	"github.com/gen2brain/go-mpv"
 	"github.com/godbus/dbus/v5"
-	"github.com/quarckster/go-mpris-server/pkg/events"
 	"github.com/quarckster/go-mpris-server/pkg/server"
 	"github.com/quarckster/go-mpris-server/pkg/types"
 )
-
-var globalMpris *server.Server = initMpris()
-var globalMprisEventHandler events.EventHandler = *events.NewEventHandler(globalMpris)
 
 type Root struct{}
 type Player struct{}

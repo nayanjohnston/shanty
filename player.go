@@ -15,11 +15,10 @@ const (
 	loopSong
 )
 
-var globalMpv *mpv.Mpv = initMpv()
 var globalQueue Queue = Queue{currentSong: 0}
 var loopMode LoopMode = loopNone
 
-func initMpv() *mpv.Mpv {
+func initMpv() (*mpv.Mpv, error) {
 	// Create mpv player
 	m := mpv.New()
 
@@ -34,10 +33,10 @@ func initMpv() *mpv.Mpv {
 	// Start player and return
 	err := m.Initialize()
 	if err != nil {
-		panic(errors.New("shanty: Cannot initialize mpv. (Is both libmpv and mpv installed?)"))
+		return nil, errors.New("shanty: Cannot initialize mpv. (Is both libmpv and mpv installed?)")
 	}
 
-	return m
+	return m, nil
 }
 
 // Song definition

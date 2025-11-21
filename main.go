@@ -2,10 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"math"
 	"os"
 	"time"
+
+	"github.com/gen2brain/go-mpv"
+	"github.com/pkg/errors"
+	"github.com/quarckster/go-mpris-server/pkg/events"
+	"github.com/quarckster/go-mpris-server/pkg/server"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -42,7 +46,10 @@ var (
 	currentMainFocus    MainFocus    = controllerFocus
 	currentContentFocus ContentFocus = libraryFocus
 
-	globalProgram *tea.Program
+	globalMpv               *mpv.Mpv
+	globalMpris             *server.Server
+	globalMprisEventHandler events.EventHandler
+	globalProgram           *tea.Program
 )
 
 func main() {
@@ -52,6 +59,16 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	// Setup mpv
+	globalMpv, err = initMpv()
+	if err != nil {
+		panic(err)
+	}
+
+	// Setup mpris
+	globalMpris = initMpris()
+	globalMprisEventHandler = *events.NewEventHandler(globalMpris)
 
 	// Setup bubbletea logging
 	tempFolder := os.TempDir()
