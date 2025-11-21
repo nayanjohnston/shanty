@@ -11,6 +11,8 @@ type MainModel struct {
 	controllerModel tea.Model
 }
 
+type msgErrorShouldPanic error
+
 // Model Initialisation
 func initMainModel() MainModel {
 	mainModel := MainModel{
@@ -65,6 +67,8 @@ func (m MainModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		cmds = append(cmds, cmd)
 		return m, tea.Batch(cmds...)
+	case msgErrorShouldPanic:
+		panic(msg)
 	}
 
 	m.controllerModel, cmd = m.controllerModel.Update(msg)

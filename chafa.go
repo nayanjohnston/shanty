@@ -22,7 +22,13 @@ func imageArray(imageId string) ([]string, error) {
 		return nil, errors.New("shanty: Cannot get user cache.")
 	}
 
-	os.MkdirAll(cacheDir+"/shanty/art/", 0755)
+	err = os.MkdirAll(cacheDir+"/shanty/art/", 0755)
+	if err != nil {
+		return nil, errors.New("shanty: Cannot create cache folder in \"" +
+			cacheDir +
+			"\"",
+		)
+	}
 
 	imageFile := cacheDir + "/shanty/art/" + imageId + ".jpg"
 	textFile := cacheDir + "/shanty/art/" + imageId + ".txt"

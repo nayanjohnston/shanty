@@ -29,8 +29,6 @@ type LibraryModel struct {
 }
 
 type msgLibraryLoaded *[]Album
-type msgErrorReadingLibrary error
-type msgErrorArtworkArray error
 type msgAddAlbumToQueue *Album
 type msgUpdatedLibrarySize struct {
 	rows    int
@@ -145,7 +143,7 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				newArt, err := imageArray(element.artworkId)
 
 				if err != nil {
-					return msgErrorArtworkArray(err)
+					return msgErrorShouldPanic(err)
 				}
 
 				m.library[index].artwork = newArt
@@ -156,8 +154,6 @@ func (m LibraryModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, func() tea.Msg { return msgChangePage(0) })
 
 		return m, tea.Sequence(cmds...)
-	case msgErrorArtworkArray:
-		panic(msg)
 	case msgSonglistLoaded:
 		msg.album.songlist = msg.songlist
 	case msgChangePage:
@@ -281,7 +277,10 @@ func (m LibraryModel) View() string {
 		row := (contentWidth / 2) - (lipgloss.Width(choiceRender) / 2)
 		col := (contentHeight / 2) - (lipgloss.Height(choiceRender) / 2)
 
-		result, _ = Overlay(result, choiceRender, col, row, true)
+		overlayOutput, err := Overlay(result, choiceRender, col, row, true)
+		if err == nil {
+			result = overlayOutput
+		}
 	}
 
 	return result
@@ -312,7 +311,7 @@ func getLibrary(sortMethod string) tea.Cmd {
 					"&offset=" + pageString,
 			)
 			if err != nil {
-				return msgErrorReadingLibrary(err)
+				return msgErrorShouldPanic(err)
 			}
 
 			resultBody, _ := io.ReadAll(result.Body)
@@ -389,8 +388,11 @@ func getSonglist(album *Album) tea.Msg {
 		"&id=" + album.id
 
 	result, err := http.Get(albumUrl)
+
 	if err != nil {
-		panic(errors.New("shanty: Cannot get Songlist for Album."))
+		return msgErrorShouldPanic(
+			errors.New("shanty: Cannot get Songlist for Album."),
+		)
 	}
 
 	resultBody, _ := io.ReadAll(result.Body)

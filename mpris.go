@@ -65,8 +65,12 @@ func (p Player) Pause() error {
 	return nil
 }
 func (p Player) PlayPause() error {
-	property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
-	paused, _ := property.(bool)
+	var paused bool
+
+	property, err := globalMpv.GetProperty("pause", mpv.FormatFlag)
+	if err == nil {
+		paused, _ = property.(bool)
+	}
 
 	globalProgram.Send(msgCtrlSetPaused{paused: !paused})
 	return nil
@@ -98,8 +102,11 @@ func (p Player) PlaybackStatus() (types.PlaybackStatus, error) {
 		return types.PlaybackStatusStopped, nil
 	}
 
-	property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
-	paused, _ := property.(bool)
+	var paused bool
+	property, err := globalMpv.GetProperty("pause", mpv.FormatFlag)
+	if err == nil {
+		paused, _ = property.(bool)
+	}
 
 	if paused {
 		return types.PlaybackStatusPaused, nil
@@ -120,7 +127,13 @@ func (p Player) Metadata() (types.Metadata, error) {
 		}, nil
 	}
 
-	userCache, _ := os.UserCacheDir()
+	userCache, err := os.UserCacheDir()
+
+	if err != nil {
+		return types.Metadata{
+			TrackId: "/org/mpris/MediaPlayer2/TrackList/NoTrack",
+		}, err
+	}
 
 	track_id := "/shanty/album/" + globalQueue.getCurrentSong().album.id +
 		"/track/" + globalQueue.getCurrentSong().id
@@ -155,8 +168,12 @@ func (p Player) Volume() (float64, error) {
 		return 1.0, nil
 	}
 
-	property, _ := globalMpv.GetProperty("volume", mpv.FormatInt64)
-	volume, _ := property.(int64)
+	var volume int64
+
+	property, err := globalMpv.GetProperty("volume", mpv.FormatInt64)
+	if err == nil {
+		volume, _ = property.(int64)
+	}
 
 	return float64(volume) / 100.0, nil
 }
@@ -173,8 +190,12 @@ func (p Player) Position() (int64, error) {
 		return 0, nil
 	}
 
-	property, _ := globalMpv.GetProperty("time-pos", mpv.FormatInt64)
-	position, _ := property.(int64)
+	var position int64
+
+	property, err := globalMpv.GetProperty("time-pos", mpv.FormatInt64)
+	if err == nil {
+		position, _ = property.(int64)
+	}
 
 	return int64(secondsToMicroseconds(float64(position))), nil
 }

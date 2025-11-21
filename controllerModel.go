@@ -64,8 +64,12 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch msg.String() {
 		// Toggle play/pause
 		case " ":
-			property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
-			paused, _ := property.(bool)
+			var paused bool
+
+			property, err := globalMpv.GetProperty("pause", mpv.FormatFlag)
+			if err == nil {
+				paused, _ = property.(bool)
+			}
 
 			cmds = append(cmds, func() tea.Msg {
 				return msgCtrlSetPaused{paused: !paused}
@@ -208,8 +212,12 @@ func (m ControllerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Don't move backward if position is more then 5 seconds ahead (just
 		// replay)
-		property, _ := globalMpv.GetProperty("time-pos", mpv.FormatInt64)
-		position, _ := property.(int64)
+		var position int64
+
+		property, err := globalMpv.GetProperty("time-pos", mpv.FormatInt64)
+		if err == nil {
+			position, _ = property.(int64)
+		}
 
 		if msg.amount < 0 && position >= 5 {
 			shouldMove = false
@@ -314,11 +322,18 @@ func (m ControllerModel) renderInfo(info string, isFocused bool) string {
 func (m ControllerModel) renderStatus(isFocused bool) string {
 	width := terminalWidth - 22
 
-	property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
-	paused, _ := property.(bool)
+	var paused bool
+	var volume int64
 
-	property, _ = globalMpv.GetProperty("volume", mpv.FormatInt64)
-	volume, _ := property.(int64)
+	property, err := globalMpv.GetProperty("pause", mpv.FormatFlag)
+	if err == nil {
+		paused, _ = property.(bool)
+	}
+
+	property, err = globalMpv.GetProperty("volume", mpv.FormatInt64)
+	if err == nil {
+		volume, _ = property.(int64)
+	}
 
 	volumeIcon := " "
 
@@ -381,14 +396,24 @@ func (m ControllerModel) renderStatus(isFocused bool) string {
 }
 
 func (m ControllerModel) renderProgress(isFocused bool) string {
-	property, _ := globalMpv.GetProperty("duration", mpv.FormatInt64)
-	duration, _ := property.(int64)
+	var duration int64
+	var position int64
+	var percentPos float64
 
-	property, _ = globalMpv.GetProperty("time-pos", mpv.FormatInt64)
-	position, _ := property.(int64)
+	property, err := globalMpv.GetProperty("duration", mpv.FormatInt64)
+	if err == nil {
+		duration, _ = property.(int64)
+	}
 
-	property, _ = globalMpv.GetProperty("percent-pos", mpv.FormatDouble)
-	percentPos, _ := property.(float64)
+	property, err = globalMpv.GetProperty("time-pos", mpv.FormatInt64)
+	if err == nil {
+		position, _ = property.(int64)
+	}
+
+	property, err = globalMpv.GetProperty("percent-pos", mpv.FormatDouble)
+	if err == nil {
+		percentPos, _ = property.(float64)
+	}
 
 	styleProgress := lipgloss.NewStyle().
 		Width(terminalWidth).
@@ -458,8 +483,11 @@ func checkScrobble(m *ControllerModel, currentPos float64, submission bool) tea.
 				return msgCtrlSetScrobbled{hasScrobbled: true}
 			}
 		} else {
-			property, _ := globalMpv.GetProperty("pause", mpv.FormatFlag)
-			paused, _ := property.(bool)
+			var paused bool
+			property, err := globalMpv.GetProperty("pause", mpv.FormatFlag)
+			if err == nil {
+				paused, _ = property.(bool)
+			}
 
 			if paused {
 				return nil
